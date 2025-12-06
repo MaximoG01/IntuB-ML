@@ -1,52 +1,67 @@
-
 {% extends "base.html" %}
-{% block title %}Analytics – intuB{% endblock %}
 {% block content %}
-  <h2>Analytics</h2>
+<h2>Analytics</h2>
 
-  {% if total == 0 %}
-    <p>No records yet.</p>
-  {% else %}
-    <p>Total records: {{ total }} – Easy: {{ easy_count }} – Difficult: {{ diff_count }}</p>
-    <p>Age (N, mean, min, max): {{ age_stats[0] }}, {{ '%.1f' % age_stats[1] if age_stats[1] else '?' }}, {{ age_stats[2] }}, {{ age_stats[3] }}</p>
+{% if error %}
+  <div class="alert alert-warning">{{ error }}</div>
+{% endif %}
 
-    <h3>Model performance (logistic regression)</h3>
-    <pre id="metrics">Loading...</pre>
+{% if log_metrics %}
+  <h3>Logistic Regression</h3>
+  <ul>
+    <li>Samples: {{ log_metrics.n_samples }}</li>
+    <li>Accuracy (train): {{ (log_metrics.accuracy * 100) | round(1) }}%</li>
+    <li>AUC (train): {{ (log_metrics.auc * 100) | round(1) if log_metrics.auc is not none else "n/a" }}</li>
+    <li>Threshold for "difficult": {{ (log_metrics.threshold * 100) | round(1) }}%</li>
+  </ul>
 
-    <canvas id="coeffChart" width="400" height="200"></canvas>
+  <h4>Confusion matrix (using threshold)</h4>
+  <ul>
+    <li>TN: {{ log_metrics.confusion.tn }}</li>
+    <li>FP: {{ log_metrics.confusion.fp }}</li>
+    <li>FN: {{ log_metrics.confusion.fn }}</li>
+    <li>TP: {{ log_metrics.confusion.tp }}</li>
+  </ul>
 
-    <script>
-      fetch("{{ url_for('main.analytics_json') }}")
-        .then(r => r.json())
-        .then(data => {
-          if (data.error) {
-            document.getElementById("metrics").textContent = data.error;
-            return;
-          }
-          document.getElementById("metrics").textContent = JSON.stringify(data, null, 2);
+  <h4>ROC curve</h4>
+  <canvas id="rocChart"></canvas>
+{% endif %}
 
-          const ctx = document.getElementById('coeffChart').getContext('2d');
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: data.feature_names,
-              datasets: [{
-                label: 'Logistic regression coefficients',
-                data: data.coefficients,
-              }]
-            },
-            options: {
-              responsive: true,
-              scales: {
-                x: { title: { display: true, text: 'Feature' } },
-                y: { title: { display: true, text: 'Coefficient' } }
-              }
-            }
-          });
-        })
-        .catch(err => {
-          document.getElementById("metrics").textContent = err;
-        });
-    </script>
-  {% endif %}
+{% if nn_metrics %}
+  <h3>Neural Network (PyTorch, validation)</h3>
+  <ul>
+    <li>Train samples: {{ nn_metrics.n_train }}</li>
+    <li>Validation samples: {{ nn_metrics.n_val }}</li>
+    <li>Accuracy (val): {{ (nn_metrics.accuracy_val * 100) | round(1) }}%</li>
+    <li>AUC (val): {{ (nn_metrics.auc_val * 100) | round(1) if nn_metrics.auc_val is not none else "n/a" }}</li>
+    <li>Brier score (val): {{ nn_metrics.brier_val | round(3) if nn_metrics.brier_val is not none else "n/a" }}</li>
+  </ul>
+{% endif %}
+
+{% if log_metrics %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const fpr = {{ log_metrics.fpr | tojson }};
+  const tpr = {{ log_metrics.tpr | tojson }};
+
+  const ctx = document.getElementById('rocChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: fpr,
+      datasets: [{
+        label: 'ROC curve',
+        data: tpr,
+        fill: false,
+      }]
+    },
+    options: {
+      scales: {
+        x: { title: { display: true, text: 'False Positive Rate' } },
+        y: { title: { display: true, text: 'True Positive Rate' }, min: 0, max: 1 }
+      }
+    }
+  });
+</script>
+{% endif %}
 {% endblock %}

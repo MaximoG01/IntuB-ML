@@ -26,32 +26,35 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
+from datetime import datetime
+from app import db
+
 class IntubationRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
-    # Demographics
+    operator_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+
+    # fattori pre-intubazione
     age = db.Column(db.Integer, nullable=False)
     weight = db.Column(db.Float, nullable=False)
+    height = db.Column(db.Float)              # cm, può essere None
+    sex = db.Column(db.String(1))             # 'M', 'F', 'O' (altro/ignoto)
 
-    # Airway scores / distances
-    dtm = db.Column(db.Float, nullable=True)  # thyromental distance (cm)
-    dii = db.Column(db.Float, nullable=True)  # interincisor distance (cm)
-    mallampati = db.Column(db.Integer, nullable=True)
-    stop_bang = db.Column(db.Integer, nullable=True)
-    alganzouri = db.Column(db.Integer, nullable=True)
+    dtm = db.Column(db.Float)                 # distanza tiromentale
+    dii = db.Column(db.Float)                 # distanza interincisiva
+    mallampati = db.Column(db.Integer)
+    stop_bang = db.Column(db.Integer)
+    alganzouri = db.Column(db.Integer)
 
-    # Technique
-    drug_used = db.Column(db.String(120), nullable=True)
-    technique = db.Column(db.String(120), nullable=True)
+    drug_used = db.Column(db.String(128))     # lasciati liberi / raw
+    technique = db.Column(db.String(128))
 
-    # Outcome
-    success = db.Column(db.Boolean, nullable=False)
+    # esito – possono essere vuoti se il caso è “pending”
+    success = db.Column(db.Boolean, nullable=True)
     cormack = db.Column(db.Integer, nullable=True)
-
-    difficult_binary = db.Column(db.Boolean, nullable=False)
+    difficult_binary = db.Column(db.Boolean, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    operator_id = db.Column(db.Integer, db.ForeignKey("user.id"))
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f"<IntubationRecord {self.id}>"

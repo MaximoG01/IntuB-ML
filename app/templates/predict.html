@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Predizione difficoltà intubazione</h2>
+
+{% if error %}
+  <div class="alert alert-warning">{{ error }}</div>
+{% endif %}
+
+<form method="post">
+    {{ form.hidden_tag() }}
+
+    <p>{{ form.age.label }} {{ form.age(size=5) }}</p>
+    <p>{{ form.weight.label }} {{ form.weight(size=5) }}</p>
+    <p>{{ form.height.label }} {{ form.height(size=5) }}</p>
+    <p>{{ form.sex.label }} {{ form.sex() }}</p>
+
+    <p>{{ form.dtm.label }} {{ form.dtm(size=5) }}</p>
+    <p>{{ form.dii.label }} {{ form.dii(size=5) }}</p>
+    <p>{{ form.mallampati.label }} {{ form.mallampati(size=5) }}</p>
+    <p>{{ form.stop_bang.label }} {{ form.stop_bang(size=5) }}</p>
+    <p>
+      {{ form.alganzouri.label }} {{ form.alganzouri(size=5) }}<br>
+      {% if form.alganzouri.description %}
+        <small>{{ form.alganzouri.description }}</small>
+      {% endif %}
+    </p>
+
+    <p>{{ form.drug_used.label }} {{ form.drug_used(size=40) }}</p>
+    <p>{{ form.technique.label }} {{ form.technique(size=40) }}</p>
+
+    <p>{{ form.save_case() }} {{ form.save_case.label }}</p>
+
+    <p>{{ form.submit(class="btn btn-primary") }}</p>
+</form>
+
+{% if prediction is not none and proba is not none %}
+  <hr>
+  <h3>Risultato della predizione</h3>
+  <p>Probabilità di intubazione difficile:
+    <strong>{{ (proba * 100) | round(1) }}%</strong>
+  </p>
+  <p>Classificazione:
+    <strong>{{ prediction }}</strong>
+  </p>
+
+  {% if pending_record_id %}
+    <p>
+      Caso salvato come “in attesa di esito”.<br>
+      Dopo l'intubazione, completa Cormack e successo qui:
+      <a href="{{ url_for('main.record_outcome', record_id=pending_record_id) }}">
+        Inserisci esito
+      </a>
+    </p>
+  {% endif %}
+{% endif %}
+{% endblock %}

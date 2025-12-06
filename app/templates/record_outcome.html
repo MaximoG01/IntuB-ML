@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Completa esito intubazione – record #{{ record.id }}</h2>
+
+<form method="post">
+    {{ form.hidden_tag() }}
+
+    <p>{{ form.success() }} {{ form.success.label }}</p>
+    <p>{{ form.cormack.label }} {{ form.cormack(size=5) }}</p>
+
+    <p>{{ form.submit(class="btn btn-primary") }}</p>
+</form>
+{% endblock %}

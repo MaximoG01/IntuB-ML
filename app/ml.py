@@ -1,17 +1,16 @@
-
-from __future__ import annotations
-from typing import Dict, Any, List, Tuple
 import numpy as np
-
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, roc_auc_score
-
+from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve, confusion_matrix
 from app.models import IntubationRecord
 
+DIFFICULT_THRESHOLD = 0.20   # 20% risk => consider as "difficult"
+
+# elenco delle feature in ordine fisso
 FEATURES = [
     "age",
     "weight",
+    "height",
+    "sex_male",
     "dtm",
     "dii",
     "mallampati",
@@ -19,50 +18,112 @@ FEATURES = [
     "alganzouri",
 ]
 
-def _record_to_features(rec: IntubationRecord) -> List[float]:
-    vals: List[float] = []
-    for name in FEATURES:
-        v = getattr(rec, name)
-        if v is None:
-            vals.append(np.nan)
-        else:
-            vals.append(float(v))
-    return vals
+# valori "ragionevoli" da usare se manca qualcosa
+DEFAULTS = {
+    "height": 170.0,
+    "dtm": 6.0,
+    "dii": 4.0,
+    "mallampati": 2,
+    "stop_bang": 3,
+    "alganzouri": 3,
+}
 
-def train_logistic_model() -> Tuple[LogisticRegression, Dict[str, Any]]:
-    records = IntubationRecord.query.all()
-    if len(records) < 20:
-        raise RuntimeError("Not enough records to train a model (need at least 20).")
 
-    X = np.array([_record_to_features(r) for r in records], dtype=float)
+def build_feature_vector(record):
+    """
+    Converte un record (dal DB o da un 'dummy' con stessi attributi)
+    in un vettore numerico pronto per scikit-learn.
+    """
+    sex_male = 1 if getattr(record, "sex", None) == "M" else 0
+
+    height = getattr(record, "height", None) or DEFAULTS["height"]
+    dtm = getattr(record, "dtm", None) or DEFAULTS["dtm"]
+    dii = getattr(record, "dii", None) or DEFAULTS["dii"]
+    mallampati = getattr(record, "mallampati", None) or DEFAULTS["mallampati"]
+    stop_bang = getattr(record, "stop_bang", None) or DEFAULTS["stop_bang"]
+    alganzouri = getattr(record, "alganzouri", None) or DEFAULTS["alganzouri"]
+
+    return [
+        record.age,
+        record.weight,
+        height,
+        sex_male,
+        dtm,
+        dii,
+        mallampati,
+        stop_bang,
+        alganzouri,
+    ]
+
+
+def train_logistic_model(min_samples: int = 50):
+    """
+    Allena una regressione logistica sui record con esito noto (difficult_binary != None).
+    Ritorna (model, metrics_dict).
+
+    Lancia ValueError se i casi completi sono troppo pochi.
+    """
+    q = IntubationRecord.query.filter(IntubationRecord.difficult_binary.isnot(None))
+    records = q.all()
+
+    if len(records) < min_samples:
+        raise ValueError(f"Not enough complete cases for training (found {len(records)}, need {min_samples}).")
+
+    X = np.array([build_feature_vector(r) for r in records], dtype=float)
     y = np.array([1 if r.difficult_binary else 0 for r in records], dtype=int)
 
-    # simple imputation: replace NaNs with column means
-    col_means = np.nanmean(X, axis=0)
-    inds = np.where(np.isnan(X))
-    X[inds] = np.take(col_means, inds[1])
+    # modello semplice, ma con class_weight='balanced' per classi sbilanciate
+    model = LogisticRegression(max_iter=1000, class_weight="balanced")
+    model.fit(X, y)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+    # metriche base (training interno, per ora)
+    y_pred = model.predict(X)
+    y_proba = model.predict_proba(X)[:, 1]
 
-    model = LogisticRegression(max_iter=1000)
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]
+    acc = float(accuracy_score(y, y_pred))
+    try:
+        auc = float(roc_auc_score(y, y_proba))
+    except ValueError:
+        auc = None
 
     metrics = {
-        "n_samples": int(len(records)),
-        "n_train": int(len(y_train)),
-        "n_test": int(len(y_test)),
-        "accuracy": float(accuracy_score(y_test, y_pred)),
-        "roc_auc": float(roc_auc_score(y_test, y_proba)),
-        "class_balance": {
-            "easy": int((y == 0).sum()),
-            "difficult": int((y == 1).sum()),
-        },
-        "feature_names": FEATURES,
-        "coefficients": model.coef_[0].tolist(),
-        "intercept": float(model.intercept_[0]),
+        "n_samples": len(records),
+        "accuracy": acc,
+        "auc": auc,
     }
 
     return model, metrics
+
+def evaluate_logistic(min_samples: int = 50):
+    """
+    Train logistic model and return detailed metrics + ROC curve.
+    Used by /analytics.
+    """
+    model, base_metrics = train_logistic_model(min_samples=min_samples)
+
+    q = IntubationRecord.query.filter(IntubationRecord.difficult_binary.isnot(None))
+    records = q.all()
+    X = np.array([build_feature_vector(r) for r in records], dtype=float)
+    y = np.array([1 if r.difficult_binary else 0 for r in records], dtype=int)
+
+    proba = model.predict_proba(X)[:, 1]
+    y_pred = (proba >= DIFFICULT_THRESHOLD).astype(int)
+
+    fpr, tpr, _ = roc_curve(y, proba)
+    cm = confusion_matrix(y, y_pred)
+
+    metrics = dict(base_metrics)  # n_samples, accuracy, auc
+    metrics.update(
+        {
+            "fpr": fpr.tolist(),
+            "tpr": tpr.tolist(),
+            "threshold": DIFFICULT_THRESHOLD,
+            "confusion": {
+                "tn": int(cm[0, 0]),
+                "fp": int(cm[0, 1]),
+                "fn": int(cm[1, 0]),
+                "tp": int(cm[1, 1]),
+            },
+        }
+    )
+    return metrics

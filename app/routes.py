@@ -1,4 +1,13 @@
 
+import numpy as np
+from flask import render_template, redirect, url_for, flash, abort, request
+from flask_login import login_required, current_user
+
+from app import db
+from app.models import IntubationRecord
+from app.forms import IntubationForm, PredictionForm, OutcomeForm
+from app.ml import train_logistic_model, build_feature_vector
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import func
@@ -7,6 +16,9 @@ from app import db
 from app.models import User, IntubationRecord
 from app.forms import LoginForm, RegisterForm, IntubationForm
 from app.ml import train_logistic_model
+
+from app.ml import evaluate_logistic
+from app.ml_nn import evaluate_nn
 
 bp = Blueprint("main", __name__)
 
@@ -34,6 +46,28 @@ def blog():
 @bp.route("/analytics")
 @login_required
 def analytics():
+    log_metrics = None
+    nn_metrics = None
+    error = None
+
+    try:
+        log_metrics = evaluate_logistic(min_samples=50)
+    except ValueError as e:
+        error = str(e)
+
+    try:
+        nn_metrics = evaluate_nn(min_samples=50)
+    except Exception as e:
+        # don't crash the page if NN fails
+        print("NN error:", e)
+
+    return render_template(
+        "analytics.html",
+        log_metrics=log_metrics,
+        nn_metrics=nn_metrics,
+        error=error,
+    )
+
     total = IntubationRecord.query.count()
     diff_count = IntubationRecord.query.filter_by(difficult_binary=True).count()
     easy_count = total - diff_count
@@ -94,6 +128,108 @@ def new_record():
         flash("Record saved.")
         return redirect(url_for("main.dashboard"))
     return render_template("new_record.html", form=form)
+
+@bp.route("/predict", methods=["GET", "POST"])
+@login_required
+def predict():
+    form = PredictionForm()
+    prediction = None
+    proba = None
+    pending_record_id = None
+    error = None
+
+    if form.validate_on_submit():
+        # 1) train the logistic model on complete cases
+        try:
+            # if you have few records, you can drop to min_samples=10
+            model, metrics = train_logistic_model(min_samples=50)
+        except ValueError as e:
+            # not enough data, show message on page
+            error = str(e)
+            return render_template(
+                "predict.html",
+                form=form,
+                prediction=prediction,
+                proba=proba,
+                pending_record_id=pending_record_id,
+                error=error,
+            )
+
+        # 2) build a dummy record so we can reuse build_feature_vector()
+        class Dummy:
+            pass
+
+        dummy = Dummy()
+        dummy.age = form.age.data
+        dummy.weight = form.weight.data
+        dummy.height = form.height.data
+        dummy.sex = form.sex.data or None
+        dummy.dtm = form.dtm.data
+        dummy.dii = form.dii.data
+        dummy.mallampati = form.mallampati.data
+        dummy.stop_bang = form.stop_bang.data
+        dummy.alganzouri = form.alganzouri.data
+
+        # 3) feature vector -> probability
+        x = np.array([build_feature_vector(dummy)], dtype=float)
+        proba = float(model.predict_proba(x)[0][1])  # prob of difficult intubation
+        from app.ml import DIFFICULT_THRESHOLD  # make sure this import is present 
+        # ...
+        prediction = "Difficile" if proba >= DIFFICULT_THRESHOLD else "Facile"
+
+        # 4) optionally save this case as PENDING (no outcome yet)
+        if form.save_case.data:
+            rec = IntubationRecord(
+                operator_id=current_user.id,
+                age=form.age.data,
+                weight=form.weight.data,
+                height=form.height.data,
+                sex=form.sex.data or None,
+                dtm=form.dtm.data,
+                dii=form.dii.data,
+                mallampati=form.mallampati.data,
+                stop_bang=form.stop_bang.data,
+                alganzouri=form.alganzouri.data,
+                drug_used=form.drug_used.data,
+                technique=form.technique.data,
+                success=None,
+                cormack=None,
+                difficult_binary=None,
+            )
+            db.session.add(rec)
+            db.session.commit()
+            pending_record_id = rec.id
+            flash("Caso salvato in attesa di esito.", "info")
+
+    # IMPORTANT: we always render the page with prediction/proba if present
+    return render_template(
+        "predict.html",
+        form=form,
+        prediction=prediction,
+        proba=proba,
+        pending_record_id=pending_record_id,
+        error=error,
+    )
+
+@bp.route("/records/<int:record_id>/outcome", methods=["GET", "POST"])
+@login_required
+def record_outcome(record_id):
+    record = IntubationRecord.query.get_or_404(record_id)
+    if record.operator_id != current_user.id:
+        abort(403)
+
+    form = OutcomeForm(obj=record)
+    if form.validate_on_submit():
+        record.success = form.success.data
+        record.cormack = form.cormack.data
+        record.difficult_binary = (record.cormack >= 3) or (not record.success)
+        db.session.commit()
+        flash("Esito salvato e registrato per il training.", "success")
+        return redirect(url_for("main.dashboard"))
+
+    return render_template("record_outcome.html", form=form, record=record)
+
+
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
