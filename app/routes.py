@@ -18,7 +18,11 @@ from app.forms import LoginForm, RegisterForm, IntubationForm
 from app.ml import train_logistic_model
 
 from app.ml import evaluate_logistic
-from app.ml_nn import evaluate_nn
+try:
+    from app.ml_nn import evaluate_nn
+except ImportError:
+    evaluate_nn = None
+
 
 bp = Blueprint("main", __name__)
 
@@ -56,10 +60,13 @@ def analytics():
         error = str(e)
 
     try:
+        nn_metrics = None
+    if evaluate_nn is not None:
+    try:
         nn_metrics = evaluate_nn(min_samples=50)
     except Exception as e:
-        # don't crash the page if NN fails
         print("NN error:", e)
+
 
     return render_template(
         "analytics.html",
