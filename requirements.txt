@@ -8,4 +8,4 @@ gunicorn
 scikit-learn
 email_validator
 
-torch==2.1.0
+torch==2.9.1
