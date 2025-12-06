@@ -1,27 +1,15 @@
 # app/ml_nn.py
 # app/ml_nn.py
+if TORCH_AVAILABLE:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+else:
+    device = None
 
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, roc_auc_score, brier_score_loss
 
-from app.models import IntubationRecord
-from app.ml import build_feature_vector
-
-# --- NUOVA PARTE: import "soft" di torch ---
-try:
-    import torch
-    import torch.nn as nn
-    import torch.optim as optim
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
-    torch = None
-    nn = None
-    optim = None
-# -------------------------------------------
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if TORCH_AVAILABLE:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+else:
+    device = None
 
 
 class IntubationNN(nn.Module):
@@ -73,8 +61,17 @@ def train_nn(
     batch_size: int = 32,
     lr: float = 1e-3,
 ):
+    """
+    Train the neural network on DB data.
+    Must be called inside app.app_context().
+    Returns (model, metrics_dict).
+    """
+
     if not TORCH_AVAILABLE:
-        raise RuntimeError("PyTorch non è installato in questo ambiente (es. Heroku).")
+        raise RuntimeError("PyTorch is not available in this environment.")
+
+    # ... resto del codice come prima ...
+
 
     # ... resto della funzione come prima ...
 
@@ -179,8 +176,8 @@ def predict_single(model: IntubationNN, feature_vector):
 
 def evaluate_nn(min_samples: int = 50):
     if not TORCH_AVAILABLE:
-        raise RuntimeError("PyTorch non è installato in questo ambiente (es. Heroku).")
-
+        raise RuntimeError("PyTorch is not available in this environment.")
     model, metrics = train_nn(min_samples=min_samples, epochs=40, batch_size=32)
     return metrics
+
 

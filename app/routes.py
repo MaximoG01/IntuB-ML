@@ -19,10 +19,9 @@ from app.forms import LoginForm, RegisterForm, IntubationForm
 from app.ml import train_logistic_model
 
 from app.ml import evaluate_logistic
-try:
-    from app.ml_nn import evaluate_nn
-except ImportError:
-    evaluate_nn = None
+from app.ml_nn import evaluate_nn, TORCH_AVAILABLE
+
+
 
 
 bp = Blueprint("main", __name__)
@@ -48,25 +47,41 @@ def dashboard():
 def blog():
     return render_template("blog.html")
 
+# app/routes.py (o dove hai il blueprint bp)
+
+from app.ml import evaluate_logistic
+# ATTENZIONE: per Heroku al momento NON importiamo evaluate_nn
+# from app.ml_nn import evaluate_nn
+
 @bp.route("/analytics")
 @login_required
 def analytics():
     log_metrics = None
+    nn_metrics = None
     error = None
+    nn_error = None
 
     try:
         log_metrics = evaluate_logistic(min_samples=50)
     except ValueError as e:
         error = str(e)
 
-    # niente PyTorch qui per ora, per non rompere Heroku
+    if TORCH_AVAILABLE:
+        try:
+            nn_metrics = evaluate_nn(min_samples=50)
+        except Exception as e:
+            nn_error = str(e)
+    else:
+        nn_error = "PyTorch non è disponibile su questo ambiente (Heroku)."
 
     return render_template(
         "analytics.html",
         log_metrics=log_metrics,
-        nn_metrics=None,   # placeholder, così il template non esplode
+        nn_metrics=nn_metrics,
         error=error,
+        nn_error=nn_error,
     )
+
 
 
 @bp.route("/analytics/json")
