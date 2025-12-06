@@ -1,14 +1,25 @@
 # app/ml_nn.py
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
+# app/ml_nn.py
 
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, brier_score_loss
 
 from app.models import IntubationRecord
-from app.ml import build_feature_vector  # reuse the same features as logistic
+from app.ml import build_feature_vector
+
+# --- NUOVA PARTE: import "soft" di torch ---
+try:
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    torch = None
+    nn = None
+    optim = None
+# -------------------------------------------
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -62,6 +73,11 @@ def train_nn(
     batch_size: int = 32,
     lr: float = 1e-3,
 ):
+    if not TORCH_AVAILABLE:
+        raise RuntimeError("PyTorch non è installato in questo ambiente (es. Heroku).")
+
+    # ... resto della funzione come prima ...
+
     """
     Train the neural network on DB data.
     Must be called inside app.app_context().
@@ -162,9 +178,9 @@ def predict_single(model: IntubationNN, feature_vector):
     return proba
 
 def evaluate_nn(min_samples: int = 50):
-    """
-    Train the NN and return validation metrics only.
-    This is for comparison on /analytics.
-    """
+    if not TORCH_AVAILABLE:
+        raise RuntimeError("PyTorch non è installato in questo ambiente (es. Heroku).")
+
     model, metrics = train_nn(min_samples=min_samples, epochs=40, batch_size=32)
     return metrics
+
