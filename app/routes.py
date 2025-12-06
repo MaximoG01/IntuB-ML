@@ -6,8 +6,9 @@ from flask_login import login_required, current_user
 from app import db
 from app.models import IntubationRecord
 from app.forms import IntubationForm, PredictionForm, OutcomeForm
-from app.ml import train_logistic_model, build_feature_vector
-
+from app.ml import evaluate_logistic  # NON importiamo più evaluate_nn qui
+# ⚠️ togli o commenta:
+# from app.ml_nn import evaluate_nn
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import func
@@ -51,7 +52,6 @@ def blog():
 @login_required
 def analytics():
     log_metrics = None
-    nn_metrics = None
     error = None
 
     try:
@@ -59,41 +59,15 @@ def analytics():
     except ValueError as e:
         error = str(e)
 
-    try:
-        nn_metrics = None
-    if evaluate_nn is not None:
-    try:
-        nn_metrics = evaluate_nn(min_samples=50)
-    except Exception as e:
-        print("NN error:", e)
-
+    # niente PyTorch qui per ora, per non rompere Heroku
 
     return render_template(
         "analytics.html",
         log_metrics=log_metrics,
-        nn_metrics=nn_metrics,
+        nn_metrics=None,   # placeholder, così il template non esplode
         error=error,
     )
 
-    total = IntubationRecord.query.count()
-    diff_count = IntubationRecord.query.filter_by(difficult_binary=True).count()
-    easy_count = total - diff_count
-
-    # simple distributions
-    age_stats = db.session.query(
-        func.count(IntubationRecord.id),
-        func.avg(IntubationRecord.age),
-        func.min(IntubationRecord.age),
-        func.max(IntubationRecord.age),
-    ).one()
-
-    return render_template(
-        "analytics.html",
-        total=total,
-        easy_count=easy_count,
-        diff_count=diff_count,
-        age_stats=age_stats,
-    )
 
 @bp.route("/analytics/json")
 @login_required

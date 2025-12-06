@@ -3,6 +3,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve, confusion_matrix
 from app.models import IntubationRecord
 
+
+
 DIFFICULT_THRESHOLD = 0.20   # 20% risk => consider as "difficult"
 
 # elenco delle feature in ordine fisso
