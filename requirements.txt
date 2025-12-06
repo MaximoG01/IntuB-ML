@@ -7,5 +7,5 @@ psycopg2-binary
 gunicorn
 scikit-learn
 email_validator
-
-torch==2.5.1
+ 
+torch
