@@ -37,6 +37,9 @@
     <li>Brier score (val): {{ nn_metrics.brier_val | round(3) if nn_metrics.brier_val is not none else "n/a" }}</li>
   </ul>
 {% endif %}
+{% if nn_error %}
+  <div class="alert alert-info">{{ nn_error }}</div>
+{% endif %}
 
 {% if log_metrics %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
