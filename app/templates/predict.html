@@ -7,30 +7,30 @@
 {% endif %}
 
 <form method="post">
-    {{ form.hidden_tag() }}
+  {{ form.hidden_tag() }}
 
-    <p>{{ form.age.label }} {{ form.age(size=5) }}</p>
-    <p>{{ form.weight.label }} {{ form.weight(size=5) }}</p>
-    <p>{{ form.height.label }} {{ form.height(size=5) }}</p>
-    <p>{{ form.sex.label }} {{ form.sex() }}</p>
+  <p>{{ form.age.label }} {{ form.age(size=5) }}</p>
+  <p>{{ form.weight.label }} {{ form.weight(size=5) }}</p>
+  <p>{{ form.height.label }} {{ form.height(size=5) }}</p>
+  <p>{{ form.sex.label }} {{ form.sex() }}</p>
 
-    <p>{{ form.dtm.label }} {{ form.dtm(size=5) }}</p>
-    <p>{{ form.dii.label }} {{ form.dii(size=5) }}</p>
-    <p>{{ form.mallampati.label }} {{ form.mallampati(size=5) }}</p>
-    <p>{{ form.stop_bang.label }} {{ form.stop_bang(size=5) }}</p>
-    <p>
-      {{ form.alganzouri.label }} {{ form.alganzouri(size=5) }}<br>
-      {% if form.alganzouri.description %}
-        <small>{{ form.alganzouri.description }}</small>
-      {% endif %}
-    </p>
+  <p>{{ form.dtm.label }} {{ form.dtm(size=5) }}</p>
+  <p>{{ form.dii.label }} {{ form.dii(size=5) }}</p>
+  <p>{{ form.mallampati.label }} {{ form.mallampati(size=5) }}</p>
+  <p>{{ form.stop_bang.label }} {{ form.stop_bang(size=5) }}</p>
+  <p>
+    {{ form.alganzouri.label }} {{ form.alganzouri(size=5) }}<br>
+    {% if form.alganzouri.description %}
+      <small>{{ form.alganzouri.description }}</small>
+    {% endif %}
+  </p>
 
-    <p>{{ form.drug_used.label }} {{ form.drug_used(size=40) }}</p>
-    <p>{{ form.technique.label }} {{ form.technique(size=40) }}</p>
+  <p>{{ form.drug_used.label }} {{ form.drug_used(size=40) }}</p>
+  <p>{{ form.technique.label }} {{ form.technique(size=40) }}</p>
 
-    <p>{{ form.save_case() }} {{ form.save_case.label }}</p>
+  <p>{{ form.save_case() }} {{ form.save_case.label }}</p>
 
-    <p>{{ form.submit(class="btn btn-primary") }}</p>
+  <p>{{ form.submit(class="btn btn-primary") }}</p>
 </form>
 
 {% if prediction is not none and proba is not none %}

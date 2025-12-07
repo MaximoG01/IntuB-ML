@@ -16,7 +16,8 @@ from sqlalchemy import func
 from app import db
 from app.models import User, IntubationRecord
 from app.forms import LoginForm, RegisterForm, IntubationForm
-from app.ml import train_logistic_model
+from app.ml import train_logistic_model, build_feature_vector, DIFFICULT_THRESHOLD
+
 
 # PRIMA (probabile)
 # from app.ml_nn import evaluate_nn, TORCH_AVAILABLE
@@ -68,16 +69,17 @@ def analytics():
     nn_metrics = None
     error = None
 
+    # Logistic regression
     try:
         log_metrics = evaluate_logistic(min_samples=50)
     except ValueError as e:
         error = str(e)
 
-    if TORCH_AVAILABLE and evaluate_nn is not None:
-        try:
-            nn_metrics = evaluate_nn(min_samples=50)
-        except Exception as e:
-            print("NN error:", e)
+    # PyTorch NN – se qualcosa va storto NON rompere la pagina
+    try:
+        nn_metrics = evaluate_nn(min_samples=50)
+    except Exception as e:
+        print("NN error:", e)
 
     return render_template(
         "analytics.html",
@@ -85,6 +87,7 @@ def analytics():
         nn_metrics=nn_metrics,
         error=error,
     )
+
 
 
 
@@ -130,6 +133,12 @@ def new_record():
         return redirect(url_for("main.dashboard"))
     return render_template("new_record.html", form=form)
 
+import numpy as np
+from app.ml import train_logistic_model, build_feature_vector, DIFFICULT_THRESHOLD
+from app.forms import PredictionForm
+from app.models import IntubationRecord
+from app import db
+
 @bp.route("/predict", methods=["GET", "POST"])
 @login_required
 def predict():
@@ -140,12 +149,9 @@ def predict():
     error = None
 
     if form.validate_on_submit():
-        # 1) train the logistic model on complete cases
         try:
-            # if you have few records, you can drop to min_samples=10
             model, metrics = train_logistic_model(min_samples=50)
         except ValueError as e:
-            # not enough data, show message on page
             error = str(e)
             return render_template(
                 "predict.html",
@@ -156,7 +162,6 @@ def predict():
                 error=error,
             )
 
-        # 2) build a dummy record so we can reuse build_feature_vector()
         class Dummy:
             pass
 
@@ -171,14 +176,11 @@ def predict():
         dummy.stop_bang = form.stop_bang.data
         dummy.alganzouri = form.alganzouri.data
 
-        # 3) feature vector -> probability
         x = np.array([build_feature_vector(dummy)], dtype=float)
-        proba = float(model.predict_proba(x)[0][1])  # prob of difficult intubation
-        from app.ml import DIFFICULT_THRESHOLD  # make sure this import is present 
-        # ...
+        proba = float(model.predict_proba(x)[0][1])
+
         prediction = "Difficile" if proba >= DIFFICULT_THRESHOLD else "Facile"
 
-        # 4) optionally save this case as PENDING (no outcome yet)
         if form.save_case.data:
             rec = IntubationRecord(
                 operator_id=current_user.id,
@@ -200,9 +202,7 @@ def predict():
             db.session.add(rec)
             db.session.commit()
             pending_record_id = rec.id
-            flash("Caso salvato in attesa di esito.", "info")
 
-    # IMPORTANT: we always render the page with prediction/proba if present
     return render_template(
         "predict.html",
         form=form,
@@ -211,6 +211,7 @@ def predict():
         pending_record_id=pending_record_id,
         error=error,
     )
+
 
 @bp.route("/records/<int:record_id>/outcome", methods=["GET", "POST"])
 @login_required
