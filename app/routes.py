@@ -18,8 +18,16 @@ from app.models import User, IntubationRecord
 from app.forms import LoginForm, RegisterForm, IntubationForm
 from app.ml import train_logistic_model
 
-from app.ml import evaluate_logistic
-from app.ml_nn import evaluate_nn, TORCH_AVAILABLE
+# PRIMA (probabile)
+# from app.ml_nn import evaluate_nn, TORCH_AVAILABLE
+
+# DOPO
+try:
+    from app.ml_nn import evaluate_nn, TORCH_AVAILABLE
+except Exception:
+    evaluate_nn = None
+    TORCH_AVAILABLE = False
+
 
 
 
@@ -59,28 +67,25 @@ def analytics():
     log_metrics = None
     nn_metrics = None
     error = None
-    nn_error = None
 
     try:
         log_metrics = evaluate_logistic(min_samples=50)
     except ValueError as e:
         error = str(e)
 
-    if TORCH_AVAILABLE:
+    if TORCH_AVAILABLE and evaluate_nn is not None:
         try:
             nn_metrics = evaluate_nn(min_samples=50)
         except Exception as e:
-            nn_error = str(e)
-    else:
-        nn_error = "PyTorch non è disponibile su questo ambiente (Heroku)."
+            print("NN error:", e)
 
     return render_template(
         "analytics.html",
         log_metrics=log_metrics,
         nn_metrics=nn_metrics,
         error=error,
-        nn_error=nn_error,
     )
+
 
 
 
