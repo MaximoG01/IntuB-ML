@@ -10,7 +10,7 @@
   <header class="site-header">
     <div class="navbar">
       <div class="navbar-left">
-        <a href="{{ url_for('main.index') }}" class="brand">
+        <a href="{{ url_for('main.landing') }}" class="brand">
           <span class="brand-main">intuB</span>
           <span class="brand-sub">Intubation Risk Intelligence</span>
         </a>
@@ -36,6 +36,13 @@
            class="nav-link {% if request.endpoint.startswith('main.blog') %}active{% endif %}">
           Blog
         </a>
+        {% if not current_user.is_authenticated %}
+          <a href="{{ url_for('main.register') }}"
+          class="nav-link {% if request.endpoint.startswith('main.register') %}active{% endif %}">
+          Register
+        </a>
+        {% endif %}
+
         {% if current_user.is_authenticated %}
           <a href="{{ url_for('main.logout') }}" class="nav-link">Logout</a>
         {% else %}
