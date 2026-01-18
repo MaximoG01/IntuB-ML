@@ -1,25 +1,20 @@
-
 {% extends "base.html" %}
-{% block title %}Background & rationale – intuB{% endblock %}
 {% block content %}
-  <article class="article">
-    <h1>Why study difficult intubation?</h1>
-    <p>
-      Difficult and failed tracheal intubation are associated with hypoxia,
-      hemodynamic instability, and peri‑operative morbidity. Multiple bedside
-      scores (Mallampati, thyromental distance, STOP‑BANG, Al‑Ganzouri, etc.)
-      have been proposed to anticipate a challenging airway, with heterogeneous
-      performance across settings.
-    </p>
-    <p>
-      intuB is a prototype web application that allows clinicians to log
-      intubation episodes in a structured way and to explore how simple models
-      perform on their own data. It is intended for education and quality
-      improvement projects, not for real‑time triage.
-    </p>
-    <p class="warning">
-      This tool does not replace clinical judgement, guidelines, or local
-      airway management protocols.
-    </p>
-  </article>
+
+<div style="max-width:900px; margin:0 auto;">
+  <h1 style="margin-bottom:0.5rem;">Blog</h1>
+  <p style="color:#6b7280; font-size:1.05rem; margin-bottom:2rem;">
+    Educational insights into difficult intubation prediction, clinical decision-support models, and the science behind intuB.
+  </p>
+
+  <div class="blog-grid">
+    {% for p in posts %}
+      <a href="{{ url_for('main.blog_post', slug=p.slug) }}" class="blog-card">
+        <div style="color:#102a43; margin-bottom:0.5rem; font-weight:600;">{{ p.title }}</div>
+        <p style="color:#6b7280; font-size:0.95rem; margin:0;">{{ p.subtitle }}</p>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+
 {% endblock %}

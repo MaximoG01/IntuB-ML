@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Insert outcome</h2>
+<p style="color:#52606d;">
+  Case ID <strong>{{ rec.id }}</strong> · created {{ rec.created_at }}.
+  After saving, the case becomes usable for training.
+</p>
+
+<form method="post" style="max-width:520px;">
+  {{ form.hidden_tag() }}
+
+  <p>{{ form.cormack.label }}<br>{{ form.cormack() }}</p>
+  <p>{{ form.success.label }}<br>{{ form.success() }}</p>
+  <p>{{ form.difficult_binary.label }}<br>{{ form.difficult_binary() }}</p>
+
+  <p>{{ form.submit(class_="btn-primary") }}</p>
+</form>
+
+{% endblock %}

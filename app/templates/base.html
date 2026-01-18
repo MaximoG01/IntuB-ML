@@ -1,90 +1,49 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}intuB{% endblock %}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
-  <header class="site-header">
-    <div class="navbar">
-      <div class="navbar-left">
-        <a href="{{ url_for('main.landing') }}" class="brand">
-          <span class="brand-main">intuB</span>
-          <span class="brand-sub">Intubation Risk Intelligence</span>
-        </a>
-      </div>
-      <nav class="navbar-right">
-        <a href="{{ url_for('main.dashboard') }}"
-           class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
-          Dashboard
-        </a>
-        <a href="{{ url_for('main.new_record') }}"
-           class="nav-link {% if request.endpoint == 'main.new_record' %}active{% endif %}">
-          New record
-        </a>
-        <a href="{{ url_for('main.predict') }}"
-           class="nav-link {% if request.endpoint == 'main.predict' %}active{% endif %}">
-          Prediction
-        </a>
-        <a href="{{ url_for('main.analytics') }}"
-           class="nav-link {% if request.endpoint == 'main.analytics' %}active{% endif %}">
-          Analytics
-        </a>
-        <a href="{{ url_for('main.blog') }}"
-           class="nav-link {% if request.endpoint.startswith('main.blog') %}active{% endif %}">
-          Blog
-        </a>
-        {% if not current_user.is_authenticated %}
-          <a href="{{ url_for('main.register') }}"
-          class="nav-link {% if request.endpoint.startswith('main.register') %}active{% endif %}">
-          Register
-        </a>
-        {% endif %}
 
-        {% if current_user.is_authenticated %}
-          <a href="{{ url_for('main.logout') }}" class="nav-link">Logout</a>
-        {% else %}
-          <a href="{{ url_for('main.login') }}"
-             class="nav-link {% if request.endpoint == 'main.login' %}active{% endif %}">
-            Login
-          </a>
-        {% endif %}
-      </nav>
+<header class="site-header">
+  <div class="navbar">
+    <div class="brand">
+      <span class="brand-main"><a class="brand-link" href="{{ url_for('main.landing') }}">intuB</a></span>
     </div>
 
-    <div class="hero">
-      <div class="hero-text">
-        <h1>Clinical decision support for airway management</h1>
-        <p>
-          Logistic regression and experimental neural networks for
-          <strong>intubation difficulty prediction</strong>.
-        </p>
-      </div>
-      <div class="hero-image">
-        <img src="{{ url_for('static', filename='anesthesia_hero.jpg') }}"
-             alt="Anesthesia and intubation illustration">
-      </div>
-    </div>
-  </header>
-
-  <main class="container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-container">
-          {% for category, message in messages %}
-            <div class="flash flash-{{ category }}">{{ message }}</div>
-          {% endfor %}
-        </div>
+    <div class="navbar-right">
+      {% if current_user.is_authenticated %}
+        <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+        <a class="nav-link" href="{{ url_for('main.predict') }}">Predict</a>
+        <a class="nav-link" href="{{ url_for('main.analytics') }}">Analytics</a>
+        <a class="nav-link" href="{{ url_for('main.blog') }}">Blog</a>
+        <a class="nav-link" href="{{ url_for('main.logout') }}">Logout</a>
+      {% else %}
+        <a class="nav-link" href="{{ url_for('main.landing') }}">Home</a>
+        <a class="nav-link" href="{{ url_for('main.login') }}">Login</a>
+        <a class="nav-link" href="{{ url_for('main.register') }}">Register</a>
       {% endif %}
-    {% endwith %}
+    </div>
+  </div>
+</header>
 
-    {% block content %}{% endblock %}
-  </main>
+<main class="container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
 
-  <footer class="site-footer">
-    <p>intuB · Experimental clinical support tool · Not for autonomous clinical decision making.</p>
-  </footer>
+  {% block content %}{% endblock %}
+</main>
+
 </body>
 </html>

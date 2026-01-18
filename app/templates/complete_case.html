@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Complete case #{{ rec.id }}</h2>
+
+<p class="muted">
+  Enter outcome after intubation. Default is set to <strong>Not difficult</strong>.
+</p>
+
+<form method="post" class="form-grid">
+
+  <div>
+    <label>Success</label>
+    <select name="success">
+      <option value="">(unknown)</option>
+      <option value="1">Yes</option>
+      <option value="0">No</option>
+    </select>
+  </div>
+
+  <div>
+    <label>Cormack–Lehane (1–4)</label>
+    <select name="cormack">
+      <option value="">(not set)</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </select>
+  </div>
+
+  <div>
+    <label>Difficult case?</label>
+    <select name="difficult_binary">
+      <option value="0" selected>Not difficult</option>
+      <option value="1">Difficult</option>
+    </select>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn" type="submit">Save outcome</button>
+    <a class="btn btn-secondary" href="{{ url_for('main.dashboard') }}">Back</a>
+  </div>
+</form>
+
+{% endblock %}

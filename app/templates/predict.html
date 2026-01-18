@@ -1,56 +1,77 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Predizione difficoltà intubazione</h2>
 
-{% if error %}
-  <div class="alert alert-warning">{{ error }}</div>
-{% endif %}
+<h2>Prediction</h2>
+<p style="color:#52606d;">Compute predicted probability of difficult intubation. Optionally save the case as <strong>pending</strong> and label the outcome later.</p>
 
 <form method="post">
-  {{ form.hidden_tag() }}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+    <div>
+      <label>Age</label>
+      <input name="age" type="number" value="{{ request.form.get('age','') }}">
+    </div>
+    <div>
+      <label>Weight (kg)</label>
+      <input name="weight" type="number" step="0.1" value="{{ request.form.get('weight','') }}">
+    </div>
+    <div>
+      <label>Height (cm)</label>
+      <input name="height" type="number" step="0.1" value="{{ request.form.get('height','') }}">
+    </div>
+    <div>
+      <label>Sex</label>
+      <select name="sex">
+        <option value="M" {% if request.form.get('sex')=='M' %}selected{% endif %}>Male</option>
+        <option value="F" {% if request.form.get('sex')=='F' %}selected{% endif %}>Female</option>
+      </select>
+    </div>
 
-  <p>{{ form.age.label }} {{ form.age(size=5) }}</p>
-  <p>{{ form.weight.label }} {{ form.weight(size=5) }}</p>
-  <p>{{ form.height.label }} {{ form.height(size=5) }}</p>
-  <p>{{ form.sex.label }} {{ form.sex() }}</p>
+    <div>
+      <label>Thyromental distance (DTM)</label>
+      <input name="dtm" type="number" step="0.1" value="{{ request.form.get('dtm','') }}">
+    </div>
+    <div>
+      <label>Interincisor distance (DII)</label>
+      <input name="dii" type="number" step="0.1" value="{{ request.form.get('dii','') }}">
+    </div>
+    <div>
+      <label>Mallampati</label>
+      <input name="mallampati" type="number" min="0" max="4" value="{{ request.form.get('mallampati','') }}">
+    </div>
+    <div>
+      <label>STOP-BANG</label>
+      <input name="stop_bang" type="number" min="0" max="8" value="{{ request.form.get('stop_bang','') }}">
+    </div>
+    <div>
+      <label>El-Ganzouri (Alganzouri)</label>
+      <input name="alganzouri" type="number" min="0" max="12" value="{{ request.form.get('alganzouri','') }}">
+    </div>
+  </div>
 
-  <p>{{ form.dtm.label }} {{ form.dtm(size=5) }}</p>
-  <p>{{ form.dii.label }} {{ form.dii(size=5) }}</p>
-  <p>{{ form.mallampati.label }} {{ form.mallampati(size=5) }}</p>
-  <p>{{ form.stop_bang.label }} {{ form.stop_bang(size=5) }}</p>
-  <p>
-    {{ form.alganzouri.label }} {{ form.alganzouri(size=5) }}<br>
-    {% if form.alganzouri.description %}
-      <small>{{ form.alganzouri.description }}</small>
-    {% endif %}
+  <p style="margin-top:12px;">
+    <label><input type="checkbox" name="action" value="save"> Save as pending</label>
   </p>
 
-  <p>{{ form.drug_used.label }} {{ form.drug_used(size=40) }}</p>
-  <p>{{ form.technique.label }} {{ form.technique(size=40) }}</p>
-
-  <p>{{ form.save_case() }} {{ form.save_case.label }}</p>
-
-  <p>{{ form.submit(class="btn btn-primary") }}</p>
+  <p>
+    <button class="btn btn-primary" type="submit" name="action" value="predict">Predict</button>
+    <button class="btn" type="submit" name="action" value="save">Predict + Save</button>
+  </p>
 </form>
 
-{% if prediction is not none and proba is not none %}
-  <hr>
-  <h3>Risultato della predizione</h3>
-  <p>Probabilità di intubazione difficile:
-    <strong>{{ (proba * 100) | round(1) }}%</strong>
-  </p>
-  <p>Classificazione:
-    <strong>{{ prediction }}</strong>
-  </p>
-
-  {% if pending_record_id %}
-    <p>
-      Caso salvato come “in attesa di esito”.<br>
-      Dopo l'intubazione, completa Cormack e successo qui:
-      <a href="{{ url_for('main.record_outcome', record_id=pending_record_id) }}">
-        Inserisci esito
-      </a>
-    </p>
-  {% endif %}
+{% if probability is not none %}
+  <div class="predict-result">
+    <h3>Logistic Regression</h3>
+    <p>Probability of difficult intubation: <strong>{{ (probability*100)|round(1) }}%</strong></p>
+    <p>Threshold: {{ threshold }}</p>
+    <p>Classification: <strong>{{ "DIFFICULT" if difficult else "NOT difficult" }}</strong></p>
+    {% if saved_record_id %}
+      <p style="margin-top:8px;color:green;">Case saved (ID #{{ saved_record_id }}).</p>
+    {% endif %}
+  </div>
 {% endif %}
+
+{% if error %}
+  <div class="flash flash-danger">{{ error }}</div>
+{% endif %}
+
 {% endblock %}

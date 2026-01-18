@@ -1,84 +1,70 @@
+# app/forms.py
+from __future__ import annotations
+
 from flask_wtf import FlaskForm
 from wtforms import (
+    BooleanField,
     StringField,
+    PasswordField,
+    SubmitField,
     IntegerField,
     FloatField,
-    BooleanField,
-    SubmitField,
     SelectField,
-    PasswordField,
 )
-from wtforms.validators import DataRequired, NumberRange, Optional, Email, Length
+from wtforms.validators import DataRequired, Email, EqualTo, NumberRange, Optional, Length
+
 
 class LoginForm(FlaskForm):
-    email = StringField("Email", validators=[DataRequired(), Email()])
+    email = StringField("Email", validators=[DataRequired(), Email(), Length(max=255)])
     password = PasswordField("Password", validators=[DataRequired()])
-    submit = SubmitField("Log in")
+    submit = SubmitField("Login")
 
 
-class RegisterForm(FlaskForm):
-    name = StringField("Name", validators=[DataRequired(), Length(max=120)])
-    email = StringField("Email", validators=[DataRequired(), Email()])
+class RegistrationForm(FlaskForm):
+    name = StringField("Name", validators=[DataRequired(), Length(max=128)])
+    email = StringField("Email", validators=[DataRequired(), Email(), Length(max=255)])
     password = PasswordField("Password", validators=[DataRequired(), Length(min=6)])
+    password2 = PasswordField(
+        "Repeat password",
+        validators=[DataRequired(), EqualTo("password", message="Passwords must match.")],
+    )
     submit = SubmitField("Register")
 
 
-class IntubationForm(FlaskForm):
-    age = IntegerField("Età", validators=[DataRequired(), NumberRange(min=0, max=120)])
-    weight = FloatField("Peso (kg)", validators=[DataRequired(), NumberRange(min=1, max=300)])
+class PredictForm(FlaskForm):
+    age = IntegerField("Age", validators=[DataRequired(), NumberRange(min=0, max=120)])
+    weight = FloatField("Weight (kg)", validators=[DataRequired(), NumberRange(min=30, max=250)])
+    height = FloatField("Height (cm)", validators=[Optional(), NumberRange(min=50, max=250)])
 
-    height = FloatField("Altezza (cm)", validators=[Optional(), NumberRange(min=50, max=250)])
     sex = SelectField(
-        "Sesso",
-        choices=[("M", "Maschio"), ("F", "Femmina"), ("O", "Altro / Non specificato")],
+        "Sex",
+        choices=[("M", "M"), ("F", "F"), ("O", "O/Unknown")],
         validators=[Optional()],
+        default="O",
     )
 
-    dtm = FloatField("Distanza tiromentale (cm)", validators=[Optional(), NumberRange(min=0, max=20)])
-    dii = FloatField("Distanza interincisiva (cm)", validators=[Optional(), NumberRange(min=0, max=10)])
-    mallampati = IntegerField("Mallampati (1–4)", validators=[Optional(), NumberRange(min=1, max=4)])
-    stop_bang = IntegerField("STOP-BANG (0–8)", validators=[Optional(), NumberRange(min=0, max=8)])
-    alganzouri = IntegerField(
-        "Al-Ganzouri risk index (0–12)",
-        description="0–1 molto basso, 2–4 basso, 5–8 moderato, 9–12 alto rischio",
-        validators=[Optional(), NumberRange(min=0, max=12)],
+    dtm = FloatField("DTM (cm)", validators=[Optional(), NumberRange(min=2, max=15)])
+    dii = FloatField("DII (cm)", validators=[Optional(), NumberRange(min=1, max=10)])
+
+    mallampati = IntegerField("Mallampati (1-4)", validators=[Optional(), NumberRange(min=0, max=4)])
+    stop_bang = IntegerField("STOP-BANG (0-8)", validators=[Optional(), NumberRange(min=0, max=8)])
+    alganzouri = IntegerField("Al-Ganzouri (0-12)", validators=[Optional(), NumberRange(min=0, max=12)])
+
+    save_pending = BooleanField("Save as pending case (enter outcome later)")
+
+    submit = SubmitField("Predict")
+
+
+class LabelOutcomeForm(FlaskForm):
+    cormack = IntegerField("Cormack–Lehane (1-4)", validators=[DataRequired(), NumberRange(min=1, max=4)])
+    success = SelectField(
+        "Intubation success",
+        choices=[("1", "Success"), ("0", "Failure")],
+        validators=[DataRequired()],
     )
-
-    drug_used = StringField("Farmaci (libero)", validators=[Optional()])
-    technique = StringField("Tecnica (libero)", validators=[Optional()])
-
-    success = BooleanField("Intubazione riuscita?")
-    cormack = IntegerField("Cormack–Lehane (1–4)", validators=[DataRequired(), NumberRange(min=1, max=4)])
-
-    submit = SubmitField("Salva record completo")
-
-class PredictionForm(FlaskForm):
-    age = IntegerField("Età", validators=[DataRequired(), NumberRange(min=0, max=120)])
-    weight = FloatField("Peso (kg)", validators=[DataRequired(), NumberRange(min=1, max=300)])
-    height = FloatField("Altezza (cm)", validators=[Optional(), NumberRange(min=50, max=250)])
-    sex = SelectField(
-        "Sesso",
-        choices=[("M", "Maschio"), ("F", "Femmina"), ("O", "Altro / Non specificato")],
-        validators=[Optional()],
+    difficult_binary = SelectField(
+        "Difficult (binary)",
+        choices=[("1", "Difficult"), ("0", "Not difficult")],
+        validators=[DataRequired()],
     )
-
-    dtm = FloatField("Distanza tiromentale (cm)", validators=[Optional(), NumberRange(min=0, max=20)])
-    dii = FloatField("Distanza interincisiva (cm)", validators=[Optional(), NumberRange(min=0, max=10)])
-    mallampati = IntegerField("Mallampati (1–4)", validators=[Optional(), NumberRange(min=1, max=4)])
-    stop_bang = IntegerField("STOP-BANG (0–8)", validators=[Optional(), NumberRange(min=0, max=8)])
-    alganzouri = IntegerField(
-        "Al-Ganzouri risk index (0–12)",
-        validators=[Optional(), NumberRange(min=0, max=12)],
-    )
-
-    drug_used = StringField("Farmaci (opzionale)", validators=[Optional()])
-    technique = StringField("Tecnica (opzionale)", validators=[Optional()])
-
-    save_case = BooleanField("Salva questo caso per completare l'esito dopo l'intubazione")
-
-    submit = SubmitField("Calcola predizione")
-
-class OutcomeForm(FlaskForm):
-    success = BooleanField("Intubazione riuscita?")
-    cormack = IntegerField("Cormack–Lehane (1–4)", validators=[DataRequired(), NumberRange(min=1, max=4)])
-    submit = SubmitField("Salva esito")
+    submit = SubmitField("Save outcome")

@@ -1,21 +1,76 @@
-
 {% extends "base.html" %}
-{% block title %}Dashboard – intuB{% endblock %}
 {% block content %}
-  <h2>Dashboard</h2>
-  <div class="cards">
-    <div class="card">
-      <h3>Total records</h3>
-      <p>{{ total }}</p>
-    </div>
-    <div class="card">
-      <h3>Your records</h3>
-      <p>{{ user_total }}</p>
-    </div>
-    <div class="card">
-      <h3>Difficult intubations</h3>
-      <p>{{ difficult }}</p>
-    </div>
+
+<h2>Dashboard — Status Check</h2>
+
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:12px;">
+  <div style="flex:1 1 180px;padding:12px;border-radius:10px;background:#f7f9ff;border:1px solid #e1e8f5;">
+    <strong>Total cases</strong>
+    <div style="font-size:1.6rem;margin-top:6px;">{{ total_cases }}</div>
   </div>
-  <p><a href="{{ url_for('main.new_record') }}">Add a new record</a></p>
+
+  <div style="flex:1 1 180px;padding:12px;border-radius:10px;background:#fff7f7;border:1px solid #f5d0d0;">
+    <strong>Pending</strong>
+    <div style="font-size:1.6rem;margin-top:6px;">{{ pending_count }}</div>
+  </div>
+
+  <div style="flex:1 1 180px;padding:12px;border-radius:10px;background:#f5fff7;border:1px solid #d7f5df;">
+    <strong>Completed</strong>
+    <div style="font-size:1.6rem;margin-top:6px;">{{ completed_count }}</div>
+  </div>
+
+  <div style="flex:1 1 220px;padding:12px;border-radius:10px;background:#f0f4ff;border:1px solid #dfe8ff;">
+    <strong>Difficulty rate (completed)</strong>
+    <div style="font-size:1.2rem;margin-top:6px;">{% if difficulty_rate is none %}n/a{% else %}{{ difficulty_rate|round(1) }}%{% endif %}</div>
+  </div>
+
+  <div style="flex:1 1 220px;padding:12px;border-radius:10px;background:#f0fff7;border:1px solid #dfffe8;">
+    <strong>Success rate (completed)</strong>
+    <div style="font-size:1.2rem;margin-top:6px;">{% if success_rate is none %}n/a{% else %}{{ success_rate|round(1) }}%{% endif %}</div>
+  </div>
+</div>
+
+<p style="margin-top:14px;">
+  <a class="btn" href="{{ url_for('main.predict') }}">Run a prediction</a>
+  <a class="btn" style="margin-left:8px;" href="#cases">View case list</a>
+</p>
+
+<hr>
+
+<a id="cases"></a>
+<h3>Recent cases</h3>
+{% if total_cases %}
+  <p style="color:#52606d;">Showing latest recorded cases below (most recent first).</p>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Date</th>
+        <th>Outcome</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in (completed + pending)[:20] %}
+      <tr>
+        <td>#{{ r.id }}</td>
+        <td>{{ r.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>
+          {% if r.cormack is none %}
+            pending
+          {% else %}
+            C{{ r.cormack }} — {% if r.difficult_binary %}Difficult{% else %}Not difficult{% endif %}
+          {% endif %}
+        </td>
+        <td>
+          <a class="nav-link" href="{{ url_for('main.complete_case', record_id=r.id) }}">Open</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="muted">No recorded cases yet.</p>
+{% endif %}
+
 {% endblock %}

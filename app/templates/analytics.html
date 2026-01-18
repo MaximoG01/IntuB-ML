@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
+
 <h2>Analytics</h2>
+
+{% if data_source == "synthetic" %}
+  <div style="padding:10px 12px;margin-bottom:12px;background:#fff7f7;border:1px solid #f5d0d0;border-radius:8px;color:#b42318;">
+    <strong>⚠ Demo Data</strong> — Your database is empty. Showing synthetic seed data. Once you add real cases to the dashboard, this will update to show your model's performance.
+  </div>
+{% endif %}
 
 {% if error %}
   <div class="alert alert-warning">{{ error }}</div>
@@ -8,63 +15,212 @@
 
 {% if log_metrics %}
   <h3>Logistic Regression</h3>
+  <p style="color:#52606d;">Training samples: {{ log_metrics.n_samples }} (from {{ log_metrics.data_source }}) | Validation set size: ~{{ (log_metrics.n_samples * 0.25) | round(0) | int }}</p>
   <ul>
-    <li>Samples: {{ log_metrics.n_samples }}</li>
-    <li>Accuracy (train): {{ (log_metrics.accuracy * 100) | round(1) }}%</li>
-    <li>AUC (train): {{ (log_metrics.auc * 100) | round(1) if log_metrics.auc is not none else "n/a" }}</li>
-    <li>Threshold for "difficult": {{ (log_metrics.threshold * 100) | round(1) }}%</li>
+    <li>Accuracy: {{ (log_metrics.accuracy * 100) | round(1) }}%</li>
+    <li>AUC: {{ (log_metrics.auc * 100) | round(1) if log_metrics.auc else "n/a" }}</li>
+    <li>Threshold: {{ log_metrics.threshold }}</li>
   </ul>
 
-  <h4>Confusion matrix (using threshold)</h4>
+  <h4>Confusion Matrix</h4>
   <ul>
-    <li>TN: {{ log_metrics.confusion.tn }}</li>
-    <li>FP: {{ log_metrics.confusion.fp }}</li>
-    <li>FN: {{ log_metrics.confusion.fn }}</li>
-    <li>TP: {{ log_metrics.confusion.tp }}</li>
+    <li>True Negatives (TN): {{ log_metrics.confusion.tn }}</li>
+    <li>False Positives (FP): {{ log_metrics.confusion.fp }}</li>
+    <li>False Negatives (FN): {{ log_metrics.confusion.fn }}</li>
+    <li>True Positives (TP): {{ log_metrics.confusion.tp }}</li>
   </ul>
 
-  <h4>ROC curve</h4>
-  <canvas id="rocChart"></canvas>
+  <h4>ROC Curve</h4>
+
+  <div id="rocWrap" style="position:relative; height:320px; max-width:900px;">
+    <canvas id="rocChart"></canvas>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const fpr = {{ log_metrics.fpr | tojson }};
+    const tpr = {{ log_metrics.tpr | tojson }};
+
+    const rocPoints = fpr.map((x, i) => ({ x: x, y: tpr[i] }));
+    const refLine = [{x:0, y:0}, {x:1, y:1}];
+
+    const canvas = document.getElementById("rocChart");
+
+    // Prevent stacking (template refresh / navigation back)
+    if (window.__rocChart) {
+      window.__rocChart.destroy();
+    }
+
+    window.__rocChart = new Chart(canvas, {
+      type: "line",
+      data: {
+        datasets: [
+          { label: "ROC", data: rocPoints, parsing: false, pointRadius: 0, borderWidth: 2, tension: 0.15 },
+          { label: "y=x", data: refLine, parsing: false, pointRadius: 0, borderDash: [6, 6], borderWidth: 1.5 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        normalized: true,
+        scales: {
+          x: { type: "linear", min: 0, max: 1, title: { display: true, text: "False Positive Rate" } },
+          y: { type: "linear", min: 0, max: 1, title: { display: true, text: "True Positive Rate" } }
+        }
+      }
+    });
+  </script>
+
+{% endif %}
+
+<hr>
+
+<h3>Neural Network (Hybrid distilled)</h3>
+{% if nn_error %}
+  <p style="color:#b42318;">{{ nn_error }}</p>
 {% endif %}
 
 {% if nn_metrics %}
-  <h3>Neural Network (PyTorch, validation)</h3>
   <ul>
-    <li>Train samples: {{ nn_metrics.n_train }}</li>
-    <li>Validation samples: {{ nn_metrics.n_val }}</li>
-    <li>Accuracy (val): {{ (nn_metrics.accuracy_val * 100) | round(1) }}%</li>
-    <li>AUC (val): {{ (nn_metrics.auc_val * 100) | round(1) if nn_metrics.auc_val is not none else "n/a" }}</li>
-    <li>Brier score (val): {{ nn_metrics.brier_val | round(3) if nn_metrics.brier_val is not none else "n/a" }}</li>
+    <li>Train samples: {{ nn_metrics["n_train"] }}</li>
+    <li>Validation samples: {{ nn_metrics["n_val"] }}</li>
+    <li>Accuracy (val): {{ (nn_metrics["accuracy_val"] * 100) | round(1) }}%</li>
+    <li>AUC (val): {{ (nn_metrics["auc_val"] * 100) | round(1) if nn_metrics["auc_val"] else "n/a" }}</li>
+    <li>Brier: {{ nn_metrics["brier_val"] | round(4) if nn_metrics["brier_val"] else "n/a" }}</li>
+    <li>Device: {{ nn_metrics["torch_device"] }}</li>
+    <li>Epochs: {{ nn_metrics["epochs"] }}</li>
+    <li>Distillation alpha: {{ nn_metrics["alpha_distill"] | round(2) }}</li>
   </ul>
 {% endif %}
-{% if nn_error %}
-  <div class="alert alert-info">{{ nn_error }}</div>
+
+{% if nn_svg %}
+  <h4>Network representation</h4>
+  <p style="color:#52606d; font-size:0.95rem; margin-bottom:12px;">
+    <strong>Single-layer logistic regression visualized as a network.</strong> 
+    Left: 10 input features (clinical parameters). Middle: 1 hidden unit (logit). Right: output (probability of difficulty).
+    <br><strong style="color:#0f3c91;">Blue lines</strong> = positive weight (supports difficult prediction).
+    <strong style="color:#b42318;">Red lines</strong> = negative weight (opposes difficult prediction).
+    <br>Line thickness shows magnitude of weight.
+  </p>
+  <div style="overflow-x:auto; border:1px solid #d9e2ec; padding:10px; border-radius:10px; background:#fff;">
+    {{ nn_svg | safe }}
+  </div>
+{% else %}
+  <p style="color:#9ca3af; font-style:italic;">Network visualization unavailable (PyTorch not available or insufficient data).</p>
 {% endif %}
 
-{% if log_metrics %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<hr>
+
+<h3>Loss Landscape (2D PCA Projection of 10 Clinical Features)</h3>
+<p style="color:#52606d; max-width: 900px;">
+  <strong>What you're seeing:</strong> A 3D visualization of loss as a function of two synthetic axes (a, b) derived from 
+  <strong>PCA dimensionality reduction</strong> of your 10 clinical features (age, weight, height, BMI, sex, DTM, DII, Mallampati, STOP-BANG, Alganzouri).
+  <br><br>
+  <strong>The axes:</strong> PC1 (45.6% variance) and PC2 (40.1% variance) capture 85.6% of your data's structure. The red/warm regions indicate low loss (good fit), 
+  while blue/cool regions indicate high loss (poor fit).
+  <br><br>
+  <strong>The trajectory:</strong> The bright green line shows how the neural network's weights evolved during training, moving through this 2D 
+  PCA-projected parameter space. Ideally, it should flow downhill toward the red valley (minimum loss).
+  <br><br>
+  <em>Note: This is NOT feature space; it's weight space projected to 2D for visualization.</em>
+</p>
+
+<div id="lossSurfacePlot" style="height:420px;"></div>
+
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
 <script>
-  const fpr = {{ log_metrics.fpr | tojson }};
-  const tpr = {{ log_metrics.tpr | tojson }};
+  const LS = {{ loss_surface | tojson }};
 
-  const ctx = document.getElementById('rocChart').getContext('2d');
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: fpr,
-      datasets: [{
-        label: 'ROC curve',
-        data: tpr,
-        fill: false,
-      }]
-    },
-    options: {
-      scales: {
-        x: { title: { display: true, text: 'False Positive Rate' } },
-        y: { title: { display: true, text: 'True Positive Rate' }, min: 0, max: 1 }
-      }
+  const X = LS.X;
+  const Y = LS.Y;
+  const Z = LS.Z;
+
+  const surface = {
+    type: "surface",
+    x: X, y: Y, z: Z,
+    showscale: true,
+    opacity: 0.92
+  };
+
+  let traces = [surface];
+
+  if (LS.traj) {
+    const trajX = LS.traj.map(p => p.a);
+    const trajY = LS.traj.map(p => p.b);
+
+    traces.push({
+      type: "scatter3d",
+      mode: "lines+markers",
+      x: trajX,
+      y: trajY,
+      z: trajX.map((v, i) => {
+        if (LS.loss_history && LS.loss_history.length === LS.traj.length) {
+          return LS.loss_history[i];
+        }
+        return null;
+      }),
+      line: { color: "rgb(0, 255, 0)", width: 8 },
+      marker: { size: 5, color: "rgb(0, 200, 0)" },
+      name: "Training trajectory"
+    });
+  }
+
+  const layout = {
+    margin: {l: 0, r: 0, t: 30, b: 0},
+    title: "Binary Cross-Entropy Loss across 2D PCA-Projected Parameter Space",
+    scene: {
+      xaxis: { title: "PC1 (45.6% variance)" },
+      yaxis: { title: "PC2 (40.1% variance)" },
+      zaxis: { title: "Loss (Binary Cross-Entropy)" }
     }
-  });
+  };
+
+  Plotly.newPlot("lossSurfacePlot", traces, layout, {displayModeBar: true});
 </script>
+
+{% if nn_metrics %}
+
+<hr>
+
+<h3>Training Loss Over Epochs</h3>
+<p style="color:#52606d; max-width: 900px;">
+  <strong>What you're seeing:</strong> Training loss (binary cross-entropy) decreasing over epochs. This shows how well the neural network 
+  is learning. A smooth downward trend indicates healthy training; plateaus or increases may indicate issues with learning rate or data quality.
+</p>
+
+<div id="trainingLossPlot" style="height:350px;"></div>
+
+<script>
+  const NN = {{ nn_metrics | tojson }};
+  
+  if (NN && NN.loss_history && NN.loss_history.length > 0) {
+    const epochs = Array.from({length: NN.loss_history.length}, (_, i) => i + 1);
+    const lossTrace = {
+      x: epochs,
+      y: NN.loss_history,
+      mode: 'lines+markers',
+      type: 'scatter',
+      name: 'Training Loss',
+      line: { color: '#0f3c91', width: 2 },
+      marker: { size: 4 }
+    };
+    
+    const lossLayout = {
+      margin: {l: 60, r: 40, t: 40, b: 50},
+      title: 'Training Loss Progression',
+      xaxis: { title: 'Epoch', gridcolor: '#e5e7eb' },
+      yaxis: { title: 'Loss (BCE)', gridcolor: '#e5e7eb' },
+      plot_bgcolor: '#fafbfc',
+      font: { size: 12 }
+    };
+    
+    Plotly.newPlot('trainingLossPlot', [lossTrace], lossLayout, {responsive: true});
+  } else {
+    document.getElementById('trainingLossPlot').innerHTML = '<div style="text-align:center;padding:50px;color:#9ca3af;">Training loss history not available (PyTorch not available or insufficient data)</div>';
+  }
+</script>
+
 {% endif %}
+
 {% endblock %}
