@@ -55,13 +55,7 @@ class HybridNNMetrics:
     b2: List[float]
 
 
-if not TORCH_AVAILABLE:
-
-    def evaluate_nn(*args, **kwargs):
-        return None
-
-else:
-
+if TORCH_AVAILABLE:
     class DistilledNN(nn.Module):
         """1 hidden layer as requested."""
         def __init__(self, input_dim: int, hidden_dim: int = 16):
@@ -74,10 +68,8 @@ else:
             h = self.act(self.fc1(x))
             return self.fc2(h).squeeze(1)
 
-
     def _flatten_params(model: nn.Module) -> torch.Tensor:
         return torch.cat([p.detach().flatten().cpu() for p in model.parameters()])
-
 
     def _train_teacher_lr(X_train: np.ndarray, y_train: np.ndarray) -> Pipeline:
         teacher = Pipeline([
@@ -86,7 +78,6 @@ else:
         ])
         teacher.fit(X_train, y_train)
         return teacher
-
 
     def train_hybrid_distilled_nn(
         min_samples: int = 50,
@@ -195,24 +186,79 @@ else:
         )
         return model, metrics
 
+else:
+    # PyTorch not available - stubs for imports
+    DistilledNN = None
+    
+    def train_hybrid_distilled_nn(*args, **kwargs):
+        raise RuntimeError("PyTorch not available. Use load_pretrained_model_weights() instead.")
 
-    def evaluate_nn(min_samples: int = 50) -> Dict[str, Any]:
-        """
-        Returns a plain dict for Jinja safety (no attribute errors).
-        """
-        _, m = train_hybrid_distilled_nn(min_samples=min_samples)
-        return {
-            "n_train": m.n_train,
-            "n_val": m.n_val,
-            "accuracy_val": m.accuracy_val,
-            "auc_val": m.auc_val,
-            "brier_val": m.brier_val,
-            "torch_device": m.torch_device,
-            "epochs": m.epochs,
-            "alpha_distill": m.alpha_distill,
-            "loss_history": m.loss_history,
-            "theta_history": m.theta_history,
-            "input_dim": m.input_dim,
-            "hidden_dim": m.hidden_dim,
-            "w1": m.w1, "b1": m.b1, "w2": m.w2, "b2": m.b2,
-        }
+
+def load_pretrained_model_weights() -> Optional[Dict[str, Any]]:
+    """
+    Load pre-trained model weights from JSON (for Heroku deployment without PyTorch).
+    Returns None if not available.
+    """
+    import os
+    import json
+    
+    model_path = os.path.join(os.path.dirname(__file__), "data", "trained_model.json")
+    if not os.path.exists(model_path):
+        return None
+    
+    try:
+        with open(model_path, 'r') as f:
+            data = json.load(f)
+        return data
+    except Exception as e:
+        print(f"Warning: Could not load pre-trained model: {e}")
+        return None
+
+
+def evaluate_nn(min_samples: int = 50) -> Optional[Dict[str, Any]]:
+    """
+    Returns a plain dict for Jinja safety (no attribute errors).
+    Uses pre-trained model if available, otherwise trains locally.
+    """
+    # Try to use pre-trained model first (for Heroku)
+    if not TORCH_AVAILABLE:
+        pretrained = load_pretrained_model_weights()
+        if pretrained:
+            print("Using pre-trained model weights...")
+            return {
+                "n_train": pretrained["metrics"]["n_train"],
+                "n_val": pretrained["metrics"]["n_val"],
+                "accuracy_val": pretrained["metrics"]["accuracy_val"],
+                "auc_val": pretrained["metrics"]["auc_val"],
+                "brier_val": pretrained["metrics"]["brier_val"],
+                "torch_device": "CPU (pre-trained)",
+                "epochs": pretrained["metrics"]["epochs"],
+                "alpha_distill": pretrained["metrics"]["alpha_distill"],
+                "loss_history": [],
+                "theta_history": [],
+                "input_dim": pretrained["input_dim"],
+                "hidden_dim": pretrained["hidden_dim"],
+                "w1": pretrained["weights"]["fc1"]["weight"],
+                "b1": pretrained["weights"]["fc1"]["bias"],
+                "w2": pretrained["weights"]["fc2"]["weight"],
+                "b2": pretrained["weights"]["fc2"]["bias"],
+            }
+        return None
+    
+    # Train locally if PyTorch available
+    _, m = train_hybrid_distilled_nn(min_samples=min_samples)
+    return {
+        "n_train": m.n_train,
+        "n_val": m.n_val,
+        "accuracy_val": m.accuracy_val,
+        "auc_val": m.auc_val,
+        "brier_val": m.brier_val,
+        "torch_device": m.torch_device,
+        "epochs": m.epochs,
+        "alpha_distill": m.alpha_distill,
+        "loss_history": m.loss_history,
+        "theta_history": m.theta_history,
+        "input_dim": m.input_dim,
+        "hidden_dim": m.hidden_dim,
+        "w1": m.w1, "b1": m.b1, "w2": m.w2, "b2": m.b2,
+    }
