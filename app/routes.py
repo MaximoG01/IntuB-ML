@@ -473,29 +473,30 @@ def blog_post(slug: str):
 @bp.route("/seed-db-secret-key-12345", methods=["POST", "GET"])
 def seed_database():
     """Secret endpoint to manually seed database - use only for Heroku initial setup"""
-    import os
     from app.seed_realistic import seed_realistic_patients
     
     try:
         # Clear existing records
-        print("Clearing old records...")
         IntubationRecord.query.delete()
         db.session.commit()
         
         # Seed 2000 new records
-        print("Seeding 2000 realistic records...")
         seed_realistic_patients(n=2000)
         
         # Get final count
         final_count = IntubationRecord.query.count()
         
-        return {
+        result = {
             "status": "success",
             "message": f"Database seeded successfully! Total records: {final_count}",
             "count": final_count
-        }, 200
+        }
+        return result, 200
     except Exception as e:
-        return {
+        import traceback
+        traceback.print_exc()
+        result = {
             "status": "error",
             "message": str(e)
-        }, 500
+        }
+        return result, 500
