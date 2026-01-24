@@ -68,7 +68,7 @@ if TORCH_AVAILABLE:
             h = self.act(self.fc1(x))
             return self.fc2(h).squeeze(1)
 
-    def _flatten_params(model: nn.Module) -> torch.Tensor:
+    def _flatten_params(model):
         return torch.cat([p.detach().flatten().cpu() for p in model.parameters()])
 
     def _train_teacher_lr(X_train: np.ndarray, y_train: np.ndarray) -> Pipeline:
