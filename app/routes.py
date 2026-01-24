@@ -40,7 +40,6 @@ def landing():
 def dashboard():
     records = (
         IntubationRecord.query
-        .filter_by(operator_id=current_user.id)
         .order_by(IntubationRecord.created_at.desc())
         .all()
     )
