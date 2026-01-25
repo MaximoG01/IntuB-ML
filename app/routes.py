@@ -315,13 +315,13 @@ def analytics():
     ]
     
     try:
-        if TORCH_AVAILABLE and nn_metrics:
-            # Use actual NN weights if available
+        if nn_metrics:
+            # Use actual NN weights if available (pre-trained JSON works without Torch)
             w1 = nn_metrics.get("w1", [])
             b1 = nn_metrics.get("b1", [])
             w2 = nn_metrics.get("w2", None)
             b2 = nn_metrics.get("b2", None)
-            
+
             if w1 and b1:
                 nn_svg = nn_svg_from_weights(w1, b1, w2, b2, input_names=input_names)
                 print("Generated NN SVG from actual NN weights")
