@@ -224,6 +224,7 @@ def evaluate_nn(min_samples: int = 50) -> Optional[Dict[str, Any]]:
     if not TORCH_AVAILABLE:
         pretrained = load_pretrained_model_weights()
         if pretrained:
+            training_history = pretrained.get("training_history", {})
             print("Using pre-trained model weights...")
             return {
                 "n_train": pretrained["metrics"]["n_train"],
@@ -234,8 +235,8 @@ def evaluate_nn(min_samples: int = 50) -> Optional[Dict[str, Any]]:
                 "torch_device": "CPU (pre-trained)",
                 "epochs": pretrained["metrics"]["epochs"],
                 "alpha_distill": pretrained["metrics"]["alpha_distill"],
-                "loss_history": [],
-                "theta_history": [],
+                "loss_history": training_history.get("loss_history", []),
+                "theta_history": training_history.get("theta_history", []),
                 "input_dim": pretrained["input_dim"],
                 "hidden_dim": pretrained["hidden_dim"],
                 "w1": pretrained["weights"]["fc1"]["weight"],

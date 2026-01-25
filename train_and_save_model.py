@@ -15,6 +15,16 @@ def main():
         model, metrics = train_hybrid_distilled_nn(min_samples=50)
         
         # Prepare model data for serialization
+        # Downsample training history to keep JSON size reasonable
+        max_points = 200
+        loss_history = list(metrics.loss_history)
+        theta_history = list(metrics.theta_history)
+        stride = 1
+        if len(loss_history) > max_points:
+            stride = max(1, int(len(loss_history) / max_points + 0.999))
+            loss_history = loss_history[::stride]
+            theta_history = theta_history[::stride]
+
         model_data = {
             "version": 1,
             "input_dim": metrics.input_dim,
@@ -37,7 +47,12 @@ def main():
                 "brier_val": metrics.brier_val,
                 "epochs": metrics.epochs,
                 "alpha_distill": metrics.alpha_distill,
-            }
+            },
+            "training_history": {
+                "loss_history": loss_history,
+                "theta_history": theta_history,
+                "stride": stride,
+            },
         }
         
         # Save to JSON
