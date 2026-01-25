@@ -4,7 +4,7 @@
 <h2>Complete case #{{ rec.id }}</h2>
 
 <p class="muted">
-  Enter outcome after intubation. Default is set to <strong>Not difficult</strong>.
+  Enter outcome after intubation. Difficulty is computed from Cormack (>2 = difficult).
 </p>
 
 <form method="post" class="form-grid">
@@ -26,14 +26,6 @@
       <option value="2">2</option>
       <option value="3">3</option>
       <option value="4">4</option>
-    </select>
-  </div>
-
-  <div>
-    <label>Difficult case?</label>
-    <select name="difficult_binary">
-      <option value="0" selected>Not difficult</option>
-      <option value="1">Difficult</option>
     </select>
   </div>
 
