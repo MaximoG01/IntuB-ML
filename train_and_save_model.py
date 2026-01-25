@@ -48,7 +48,7 @@ def main():
         with open(model_path, 'w') as f:
             json.dump(model_data, f, indent=2)
         
-        print(f"\n✓ Model saved to {model_path}")
+        print(f"\nModel saved to {model_path}")
         print(f"  Input dim: {metrics.input_dim}")
         print(f"  Hidden dim: {metrics.hidden_dim}")
         print(f"  Train samples: {metrics.n_train}")
