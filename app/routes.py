@@ -244,13 +244,13 @@ def analytics():
     except Exception as e:
         error = f"Logistic regression failed: {e}"
 
-    # NN metrics (optional)
-    if TORCH_AVAILABLE:
-        try:
-            nn_metrics = evaluate_nn(min_samples=20)
-        except Exception as e:
-            nn_error = f"Neural network unavailable: {e}"
-    else:
+    # NN metrics (optional, supports pre-trained weights when Torch is unavailable)
+    try:
+        nn_metrics = evaluate_nn(min_samples=20)
+    except Exception as e:
+        nn_error = f"Neural network unavailable: {e}"
+
+    if nn_metrics is None and not TORCH_AVAILABLE:
         nn_error = "PyTorch is not available. NN analytics skipped."
 
     # Loss surface (use DB data if available for realistic rendering)
