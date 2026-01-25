@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>{% if rec %}Edit case{% else %}New case{% endif %}</h2>
+<p style="color:#52606d;">Difficulty is computed from Cormack (>2 = difficult).</p>
+
+<form method="post">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+    <div>
+      <label>Age</label>
+      <input name="age" type="number" value="{{ request.form.get('age', rec.age if rec else '') }}">
+    </div>
+    <div>
+      <label>Weight (kg)</label>
+      <input name="weight" type="number" step="0.1" value="{{ request.form.get('weight', rec.weight if rec else '') }}">
+    </div>
+    <div>
+      <label>Height (cm)</label>
+      <input name="height" type="number" step="0.1" value="{{ request.form.get('height', rec.height if rec else '') }}">
+    </div>
+    <div>
+      <label>Sex</label>
+      {% set sex_val = request.form.get('sex', rec.sex if rec else '') %}
+      <select name="sex">
+        <option value="" {% if not sex_val %}selected{% endif %}>Unknown</option>
+        <option value="M" {% if sex_val == 'M' %}selected{% endif %}>Male</option>
+        <option value="F" {% if sex_val == 'F' %}selected{% endif %}>Female</option>
+        <option value="O" {% if sex_val == 'O' %}selected{% endif %}>Other</option>
+      </select>
+    </div>
+    <div>
+      <label>Thyromental distance (DTM)</label>
+      <input name="dtm" type="number" step="0.1" value="{{ request.form.get('dtm', rec.dtm if rec else '') }}">
+    </div>
+    <div>
+      <label>Interincisor distance (DII)</label>
+      <input name="dii" type="number" step="0.1" value="{{ request.form.get('dii', rec.dii if rec else '') }}">
+    </div>
+    <div>
+      <label>Mallampati</label>
+      <input name="mallampati" type="number" min="0" max="4" value="{{ request.form.get('mallampati', rec.mallampati if rec else '') }}">
+    </div>
+    <div>
+      <label>STOP-BANG</label>
+      <input name="stop_bang" type="number" min="0" max="8" value="{{ request.form.get('stop_bang', rec.stop_bang if rec else '') }}">
+    </div>
+    <div>
+      <label>El-Ganzouri (Alganzouri)</label>
+      <input name="alganzouri" type="number" min="0" max="12" value="{{ request.form.get('alganzouri', rec.alganzouri if rec else '') }}">
+    </div>
+    <div>
+      <label>Drug used</label>
+      <input name="drug_used" type="text" value="{{ request.form.get('drug_used', rec.drug_used if rec else '') }}">
+    </div>
+    <div>
+      <label>Technique</label>
+      <input name="technique" type="text" value="{{ request.form.get('technique', rec.technique if rec else '') }}">
+    </div>
+    <div>
+      <label>Success</label>
+      {% set success_val = request.form.get('success', '1' if rec and rec.success else '0' if rec else '1') %}
+      <select name="success">
+        <option value="1" {% if success_val == '1' %}selected{% endif %}>Success</option>
+        <option value="0" {% if success_val == '0' %}selected{% endif %}>Failure</option>
+      </select>
+    </div>
+    <div>
+      <label>Cormack–Lehane (1-4)</label>
+      <input name="cormack" type="number" min="1" max="4" value="{{ request.form.get('cormack', rec.cormack if rec else '') }}">
+    </div>
+  </div>
+
+  <p style="margin-top:12px;">
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn" style="margin-left:8px;" href="{{ url_for('main.dashboard') }}">Cancel</a>
+  </p>
+</form>
+
+{% endblock %}

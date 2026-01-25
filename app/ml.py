@@ -116,7 +116,7 @@ def _synthetic_seed(n: int = 300, random_state: int = 42) -> Tuple[np.ndarray, n
       age/weight/dtm/dii (Gaussian) -> risk score
       -> Alganzouri, Mallampati, StopBang correlated
       -> Cormack correlated
-      -> difficult = (Cormack >= 3)
+      -> difficult = (Cormack > 2)
     """
     rng = np.random.default_rng(random_state)
 
@@ -154,7 +154,7 @@ def _synthetic_seed(n: int = 300, random_state: int = 42) -> Tuple[np.ndarray, n
     # Cormack-Lehane 1-4 correlated with latent + alg/mall (stronger signal)
     cormack = np.clip(np.round(2.0 + 0.90 * latent + 0.20 * (alg - 6) + 0.40 * (mall - 2) + rng.normal(0, 0.3, n)), 1, 4)
 
-    difficult = (cormack >= 3).astype(float)
+    difficult = (cormack > 2).astype(float)
 
     # Feature vector as in build_feature_vector
     X = np.column_stack([

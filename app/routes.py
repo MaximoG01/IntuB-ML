@@ -1,4 +1,5 @@
 import numpy as np
+from types import SimpleNamespace
 from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
 from flask_login import login_required, current_user, login_user, logout_user
 
@@ -36,13 +37,16 @@ def landing():
 # DASHBOARD
 # ------------------------------------------------------
 @bp.route("/dashboard")
-@login_required
 def dashboard():
-    records = (
-        IntubationRecord.query
-        .order_by(IntubationRecord.created_at.desc())
-        .all()
-    )
+    if current_user.is_authenticated:
+        records = (
+            IntubationRecord.query
+            .filter_by(operator_id=current_user.id)
+            .order_by(IntubationRecord.created_at.desc())
+            .all()
+        )
+    else:
+        records = []
 
     pending = [r for r in records if (r.cormack is None or r.difficult_binary is None)]
     completed = [r for r in records if (r.cormack is not None and r.difficult_binary is not None)]
@@ -69,6 +73,21 @@ def dashboard():
         difficulty_rate=difficulty_rate,
         success_rate=success_rate,
     )
+
+
+# ------------------------------------------------------
+# CASE LIST (logged-in only)
+# ------------------------------------------------------
+@bp.route("/cases")
+@login_required
+def case_list():
+    records = (
+        IntubationRecord.query
+        .filter_by(operator_id=current_user.id)
+        .order_by(IntubationRecord.created_at.desc())
+        .all()
+    )
+    return render_template("cases.html", records=records)
 
 
 # ------------------------------------------------------
@@ -116,7 +135,6 @@ def register():
 # PREDICT (and optionally SAVE as PENDING CASE)
 # ------------------------------------------------------
 @bp.route("/predict", methods=["GET", "POST"])
-@login_required
 def predict():
     """
     GET: show input form
@@ -133,8 +151,7 @@ def predict():
             model, _ = train_logistic_model(min_samples=20)
 
             # Build an in-memory record-like object (not saved unless user chooses)
-            dummy = IntubationRecord(
-                operator_id=current_user.id,
+            dummy = SimpleNamespace(
                 age=int(request.form.get("age")),
                 weight=float(request.form.get("weight")),
                 height=float(request.form.get("height") or 0),
@@ -155,6 +172,16 @@ def predict():
             action = request.form.get("action", "predict")
 
             if action == "save":
+                if not current_user.is_authenticated:
+                    flash("Login required to save a pending case.", "warning")
+                    return render_template(
+                        "predict.html",
+                        probability=proba,
+                        difficult=difficult_pred,
+                        threshold=DIFFICULT_THRESHOLD,
+                        saved_record_id=None,
+                        error=err,
+                    )
                 # Save as pending: outcomes are NULL until the clinician completes later
                 rec = IntubationRecord(
                     operator_id=current_user.id,
@@ -215,9 +242,8 @@ def complete_case(record_id: int):
         cormack_raw = request.form.get("cormack", "").strip()
         rec.cormack = int(cormack_raw) if cormack_raw else None
 
-        # difficult_binary: default is "0" in the form
-        diff_raw = request.form.get("difficult_binary", "0")
-        rec.difficult_binary = True if diff_raw == "1" else False
+        # standardize difficulty from Cormack (>2 = difficult)
+        rec.difficult_binary = (rec.cormack > 2) if rec.cormack is not None else None
 
         db.session.commit()
         flash("Case completed and added to training dataset.", "success")
@@ -227,10 +253,84 @@ def complete_case(record_id: int):
 
 
 # ------------------------------------------------------
+# CREATE / EDIT A FULL RECORD (no prediction)
+# ------------------------------------------------------
+def _float_or_none(value: str | None) -> float | None:
+    if value is None:
+        return None
+    value = value.strip()
+    return float(value) if value else None
+
+
+def _int_or_none(value: str | None) -> int | None:
+    if value is None:
+        return None
+    value = value.strip()
+    return int(value) if value else None
+
+
+@bp.route("/case/new", methods=["GET", "POST"])
+@login_required
+def new_case():
+    if request.method == "POST":
+        rec = IntubationRecord(
+            operator_id=current_user.id,
+            age=int(request.form.get("age")),
+            weight=float(request.form.get("weight")),
+            height=_float_or_none(request.form.get("height")),
+            sex=request.form.get("sex") or None,
+            dtm=_float_or_none(request.form.get("dtm")),
+            dii=_float_or_none(request.form.get("dii")),
+            mallampati=_int_or_none(request.form.get("mallampati")),
+            stop_bang=_int_or_none(request.form.get("stop_bang")),
+            alganzouri=_int_or_none(request.form.get("alganzouri")),
+            drug_used=request.form.get("drug_used") or None,
+            technique=request.form.get("technique") or None,
+            success=True if request.form.get("success") == "1" else False,
+            cormack=_int_or_none(request.form.get("cormack")),
+        )
+        rec.difficult_binary = (rec.cormack > 2) if rec.cormack is not None else None
+        db.session.add(rec)
+        db.session.commit()
+        flash("Case saved.", "success")
+        return redirect(url_for("main.dashboard"))
+
+    return render_template("case_form.html", rec=None)
+
+
+@bp.route("/case/<int:record_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_case(record_id: int):
+    rec = IntubationRecord.query.get(record_id)
+    if not rec or rec.operator_id != current_user.id:
+        abort(404)
+
+    if request.method == "POST":
+        rec.age = int(request.form.get("age"))
+        rec.weight = float(request.form.get("weight"))
+        rec.height = _float_or_none(request.form.get("height"))
+        rec.sex = request.form.get("sex") or None
+        rec.dtm = _float_or_none(request.form.get("dtm"))
+        rec.dii = _float_or_none(request.form.get("dii"))
+        rec.mallampati = _int_or_none(request.form.get("mallampati"))
+        rec.stop_bang = _int_or_none(request.form.get("stop_bang"))
+        rec.alganzouri = _int_or_none(request.form.get("alganzouri"))
+        rec.drug_used = request.form.get("drug_used") or None
+        rec.technique = request.form.get("technique") or None
+        rec.success = True if request.form.get("success") == "1" else False
+        rec.cormack = _int_or_none(request.form.get("cormack"))
+        rec.difficult_binary = (rec.cormack > 2) if rec.cormack is not None else None
+        db.session.commit()
+        flash("Case updated.", "success")
+        return redirect(url_for("main.dashboard"))
+
+    return render_template("case_form.html", rec=rec)
+
+
+# ------------------------------------------------------
 # ANALYTICS (LOG-REG + optional NN + LOSS SURFACE)
 # ------------------------------------------------------
 @bp.route("/analytics")
-@login_required
 def analytics():
     log_metrics = None
     nn_metrics = None
@@ -385,13 +485,11 @@ def _blog_posts():
 
 
 @bp.route("/blog")
-@login_required
 def blog():
     return render_template("blog.html", posts=_blog_posts())
 
 
 @bp.route("/blog/<slug>")
-@login_required
 def blog_post(slug: str):
     posts = {p["slug"]: p for p in _blog_posts()}
     post = posts.get(slug)
@@ -410,7 +508,7 @@ def blog_post(slug: str):
             },
             {
                 "h": "Cormack–Lehane and what it means operationally",
-                "p": "Cormack–Lehane grading is a pragmatic proxy of laryngeal view. Grades 3–4 often correlate with increased attempts and need for adjuncts. In this project, the binary outcome “difficult” is defined as Cormack > 3 (i.e., grade 4) unless you later choose to broaden that threshold.",
+                "p": "Cormack–Lehane grading is a pragmatic proxy of laryngeal view. Grades 3–4 often correlate with increased attempts and need for adjuncts. In this project, the binary outcome “difficult” is defined as Cormack > 2 (i.e., grades 3–4).",
                 "img": "blog/cormack_scale.jpg",
                 "caption": "Cormack–Lehane grading (add your own diagram image here).",
             },

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Case list</h2>
+<p style="color:#52606d;">Your recorded cases (most recent first).</p>
+
+<p style="margin-top:12px;">
+  <a class="btn" href="{{ url_for('main.new_case') }}">Add record (no prediction)</a>
+  <a class="btn" style="margin-left:8px;" href="{{ url_for('main.predict') }}">Predict</a>
+</p>
+
+{% if records %}
+  <table class="table" style="margin-top:12px;">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Date</th>
+        <th>Outcome</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in records %}
+      <tr>
+        <td>#{{ r.id }}</td>
+        <td>{{ r.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>
+          {% if r.cormack is none %}
+            pending
+          {% else %}
+            C{{ r.cormack }} — {% if r.difficult_binary %}Difficult{% else %}Not difficult{% endif %}
+          {% endif %}
+        </td>
+        <td>
+          {% if r.cormack is none %}
+            <a class="nav-link" href="{{ url_for('main.complete_case', record_id=r.id) }}">Complete</a>
+          {% else %}
+            <a class="nav-link" href="{{ url_for('main.edit_case', record_id=r.id) }}">Edit</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="muted">No recorded cases yet.</p>
+{% endif %}
+
+{% endblock %}

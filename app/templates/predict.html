@@ -2,7 +2,7 @@
 {% block content %}
 
 <h2>Prediction</h2>
-<p style="color:#52606d;">Compute predicted probability of difficult intubation. Optionally save the case as <strong>pending</strong> and label the outcome later.</p>
+<p style="color:#52606d;">Compute predicted probability of difficult intubation. Logged-in users can save as <strong>pending</strong> and label the outcome later.</p>
 
 <form method="post">
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
@@ -48,13 +48,13 @@
     </div>
   </div>
 
-  <p style="margin-top:12px;">
-    <label><input type="checkbox" name="action" value="save"> Save as pending</label>
-  </p>
-
   <p>
     <button class="btn btn-primary" type="submit" name="action" value="predict">Predict</button>
-    <button class="btn" type="submit" name="action" value="save">Predict + Save</button>
+    {% if current_user.is_authenticated %}
+      <button class="btn" type="submit" name="action" value="save">Predict + Save pending</button>
+    {% else %}
+      <span style="margin-left:8px;color:#52606d;">Login to save pending cases.</span>
+    {% endif %}
   </p>
 </form>
 

@@ -32,14 +32,21 @@
 
 <p style="margin-top:14px;">
   <a class="btn" href="{{ url_for('main.predict') }}">Run a prediction</a>
-  <a class="btn" style="margin-left:8px;" href="#cases">View case list</a>
+  {% if current_user.is_authenticated %}
+    <a class="btn" style="margin-left:8px;" href="{{ url_for('main.new_case') }}">Add record (no prediction)</a>
+    <a class="btn" style="margin-left:8px;" href="{{ url_for('main.case_list') }}">View case list</a>
+  {% else %}
+    <a class="btn" style="margin-left:8px;" href="{{ url_for('main.login') }}">Login to manage cases</a>
+  {% endif %}
 </p>
 
 <hr>
 
 <a id="cases"></a>
 <h3>Recent cases</h3>
-{% if total_cases %}
+{% if not current_user.is_authenticated %}
+  <p class="muted">Log in to view and manage your case list.</p>
+{% elif total_cases %}
   <p style="color:#52606d;">Showing latest recorded cases below (most recent first).</p>
   <table class="table">
     <thead>
@@ -63,7 +70,11 @@
           {% endif %}
         </td>
         <td>
-          <a class="nav-link" href="{{ url_for('main.complete_case', record_id=r.id) }}">Open</a>
+          {% if r.cormack is none %}
+            <a class="nav-link" href="{{ url_for('main.complete_case', record_id=r.id) }}">Complete</a>
+          {% else %}
+            <a class="nav-link" href="{{ url_for('main.edit_case', record_id=r.id) }}">Edit</a>
+          {% endif %}
         </td>
       </tr>
     {% endfor %}
