@@ -39,6 +39,18 @@ def landing():
 # ------------------------------------------------------
 @bp.route("/dashboard")
 def dashboard():
+    query = IntubationRecord.query
+    total_cases = query.count()
+    pending_count = query.filter(
+        or_(IntubationRecord.cormack.is_(None), IntubationRecord.difficult_binary.is_(None))
+    ).count()
+    completed_count = query.filter(
+        IntubationRecord.cormack.isnot(None),
+        IntubationRecord.difficult_binary.isnot(None),
+    ).count()
+    difficult_count = query.filter(IntubationRecord.difficult_binary.is_(True)).count()
+    success_count = query.filter(IntubationRecord.success.is_(True)).count()
+
     if current_user.is_authenticated:
         records = (
             IntubationRecord.query
@@ -46,34 +58,12 @@ def dashboard():
             .order_by(IntubationRecord.created_at.desc())
             .all()
         )
-
         pending = [r for r in records if (r.cormack is None or r.difficult_binary is None)]
         completed = [r for r in records if (r.cormack is not None and r.difficult_binary is not None)]
-
-        # Summary statistics for dashboard overview
-        total_cases = len(records)
-        pending_count = len(pending)
-        completed_count = len(completed)
-
-        # Compute difficulty and success rates among completed cases
-        difficult_count = sum(1 for r in completed if r.difficult_binary)
-        success_count = sum(1 for r in completed if r.success is True)
     else:
         records = []
         pending = []
         completed = []
-
-        query = IntubationRecord.query
-        total_cases = query.count()
-        pending_count = query.filter(
-            or_(IntubationRecord.cormack.is_(None), IntubationRecord.difficult_binary.is_(None))
-        ).count()
-        completed_count = query.filter(
-            IntubationRecord.cormack.isnot(None),
-            IntubationRecord.difficult_binary.isnot(None),
-        ).count()
-        difficult_count = query.filter(IntubationRecord.difficult_binary.is_(True)).count()
-        success_count = query.filter(IntubationRecord.success.is_(True)).count()
 
     difficulty_rate = (difficult_count / completed_count * 100) if completed_count else None
     success_rate = (success_count / completed_count * 100) if completed_count else None
