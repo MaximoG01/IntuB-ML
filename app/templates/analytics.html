@@ -148,18 +148,20 @@
   if (LS.traj) {
     const trajX = LS.traj.map(p => p.a);
     const trajY = LS.traj.map(p => p.b);
+    const lossLen = (LS.loss_history || []).length;
+    const trajLen = LS.traj.length;
+    const zMax = Math.max(...Z.flat());
+    const zOffset = isFinite(zMax) ? (zMax + 0.05) : 0.05;
+    const trajZ = (lossLen === trajLen && lossLen > 0)
+      ? LS.loss_history
+      : Array(trajLen).fill(zOffset);
 
     traces.push({
       type: "scatter3d",
       mode: "lines+markers",
       x: trajX,
       y: trajY,
-      z: trajX.map((v, i) => {
-        if (LS.loss_history && LS.loss_history.length === LS.traj.length) {
-          return LS.loss_history[i];
-        }
-        return null;
-      }),
+      z: trajZ,
       line: { color: "rgb(0, 255, 0)", width: 8 },
       marker: { size: 5, color: "rgb(0, 200, 0)" },
       name: "Training trajectory"
