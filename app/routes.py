@@ -265,7 +265,7 @@ def analytics():
         loss_surface = loss_surface_2d_safe(X=X_db, y=y_db)
         
         # Add trajectory data to loss surface if we have NN training history
-        if loss_surface and TORCH_AVAILABLE and nn_metrics and nn_metrics.get("theta_history"):
+        if loss_surface and nn_metrics and nn_metrics.get("theta_history"):
             try:
                 import numpy as np
                 # Project theta_history to the same 2D PCA space as the loss surface
