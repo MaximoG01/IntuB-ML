@@ -1,5 +1,14 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
-app.db
-migrations/versions/__pycache__/
+
+# data and secrets: never commit
+*.db
+*.sqlite
+*.sqlite3
+db_export/
+*.zip
+*.sql
+.env
+.env.*
