@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from app.ml import _load_xy  # uses DB if enough, else synthetic seed
+from app.ml import _load_xy, DIFFICULT_THRESHOLD  # DB only; raises InsufficientDataError
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, brier_score_loss
 from sklearn.pipeline import Pipeline
@@ -95,7 +95,7 @@ if TORCH_AVAILABLE:
         """
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        X, y, data_source = _load_xy(min_samples=min_samples, prefer_db=True)
+        X, y, data_source = _load_xy(min_samples=min_samples)
         X_train, X_val, y_train, y_val = train_test_split(
             X, y, test_size=test_size, random_state=random_state, stratify=y
         )
@@ -161,7 +161,7 @@ if TORCH_AVAILABLE:
             logits_val = model(X_val_t)
             proba_val = torch.sigmoid(logits_val).detach().cpu().numpy()
 
-        pred = (proba_val >= 0.5).astype(int)
+        pred = (proba_val >= DIFFICULT_THRESHOLD).astype(int)
 
         # Export weights for SVG (fc1 and fc2)
         w1 = model.fc1.weight.detach().cpu().numpy().astype(float).tolist()

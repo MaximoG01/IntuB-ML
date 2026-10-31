@@ -71,11 +71,7 @@ def main():
         print(f"  Accuracy: {metrics.accuracy_val:.4f}")
         print(f"  AUC: {metrics.auc_val:.4f}")
         print(f"  Brier: {metrics.brier_val:.4f}")
-        print("\nNow commit this file and push to Heroku:")
-        print("  git add app/data/trained_model.json")
-        print("  git commit -m 'Add trained NN model for Heroku deployment'")
-        print("  git push origin main")
-        print("  git push heroku main")
+        print("\nCheck which data the model was trained on before committing this file.")
 
 if __name__ == "__main__":
     main()

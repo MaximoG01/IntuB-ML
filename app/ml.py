@@ -41,7 +41,7 @@ class LogisticMetrics:
     confusion: Confusion
     fpr: List[float]
     tpr: List[float]
-    data_source: str  # 'database' or 'synthetic'
+    data_source: str  # 'database'
 
 
 def _safe_float(x, default=0.0) -> float:
@@ -109,86 +109,26 @@ def build_feature_vector(r: IntubationRecord) -> List[float]:
     ]
 
 
-def _synthetic_seed(n: int = 300, random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
+class InsufficientDataError(RuntimeError):
+    """Not enough labeled cases (or only one class) to train a model."""
+
+
+def _load_xy(min_samples: int = 50) -> Tuple[np.ndarray, np.ndarray, str]:
     """
-    In-memory seed used if DB is empty/insufficient.
-    Conceptual model:
-      age/weight/dtm/dii (Gaussian) -> risk score
-      -> Alganzouri, Mallampati, StopBang correlated
-      -> Cormack correlated
-      -> difficult = (Cormack > 2)
+    Load labeled records (difficult_binary not None) from the database.
+    No synthetic fallback: raises InsufficientDataError if data are not enough.
+    Returns: (X, y, data_source) with data_source = 'database'.
     """
-    rng = np.random.default_rng(random_state)
-
-    age = np.clip(rng.normal(55, 18, n), 18, 90)
-    weight = np.clip(rng.normal(78, 18, n), 45, 160)
-    height = np.clip(rng.normal(170, 9, n), 140, 200)
-    sex_code = rng.choice([0.0, 1.0], size=n, p=[0.42, 0.58])
-
-    dtm = np.clip(rng.normal(6.5, 1.0, n), 3.5, 9.5)
-    dii = np.clip(rng.normal(4.0, 0.7, n), 2.0, 6.0)
-
-    bmi = weight / ((height / 100) ** 2)
-
-    # latent "difficulty propensity"
-    # (lower dtm/dii, higher bmi, older age => higher propensity)
-    # Increased coefficients for stronger class separation
-    latent = (
-        0.10 * (age - 50)
-        + 0.15 * (bmi - 26)
-        - 1.50 * (dtm - 6.5)
-        - 1.80 * (dii - 4.0)
-        + rng.normal(0, 0.4, n)  # reduced noise for cleaner signal
-    )
-
-    # correlated clinical scores
-    # Mallampati 1-4
-    mall = np.clip(np.round(2.0 + 1.2 * latent + rng.normal(0, 0.4, n)), 1, 4)
-
-    # STOP-BANG 0-8 (roughly)
-    stop = np.clip(np.round(3.0 + 2.0 * latent + 0.6 * (bmi > 30) + rng.normal(0, 0.8, n)), 0, 8)
-
-    # Alganzouri 0-12 (roughly)
-    alg = np.clip(np.round(6.0 + 2.0 * latent + 1.2 * (mall >= 3) + rng.normal(0, 1.0, n)), 0, 12)
-
-    # Cormack-Lehane 1-4 correlated with latent + alg/mall (stronger signal)
-    cormack = np.clip(np.round(2.0 + 0.90 * latent + 0.20 * (alg - 6) + 0.40 * (mall - 2) + rng.normal(0, 0.3, n)), 1, 4)
-
-    difficult = (cormack > 2).astype(float)
-
-    # Feature vector as in build_feature_vector
-    X = np.column_stack([
-        age,
-        weight,
-        height,
-        bmi,
-        sex_code,
-        dtm,
-        dii,
-        mall,
-        stop,
-        alg,
-    ]).astype(float)
-
-    y = difficult.astype(float)
-    return X, y
-
-
-def _load_xy(min_samples: int = 50, prefer_db: bool = True) -> Tuple[np.ndarray, np.ndarray, str]:
-    """
-    Prefer DB (records with difficult_binary not None). If insufficient, use synthetic.
-    Returns: (X, y, data_source) where data_source is 'database' or 'synthetic'.
-    """
-    if prefer_db:
-        q = IntubationRecord.query.filter(IntubationRecord.difficult_binary.isnot(None))
-        records = q.all()
-        if len(records) >= min_samples:
-            X = np.array([build_feature_vector(r) for r in records], dtype=float)
-            y = np.array([1.0 if r.difficult_binary else 0.0 for r in records], dtype=float)
-            return X, y, "database"
-
-    # fallback
-    return _synthetic_seed(n=max(300, min_samples), random_state=42) + ("synthetic",)
+    records = IntubationRecord.query.filter(IntubationRecord.difficult_binary.isnot(None)).all()
+    n_difficult = sum(1 for r in records if r.difficult_binary)
+    if len(records) < min_samples or n_difficult < 2 or len(records) - n_difficult < 2:
+        raise InsufficientDataError(
+            f"Not enough labeled cases to train a model: {len(records)} cases "
+            f"({n_difficult} difficult). At least {min_samples} are needed, with both outcomes present."
+        )
+    X = np.array([build_feature_vector(r) for r in records], dtype=float)
+    y = np.array([1.0 if r.difficult_binary else 0.0 for r in records], dtype=float)
+    return X, y, "database"
 
 
 def train_logistic_model(
@@ -196,7 +136,7 @@ def train_logistic_model(
     test_size: float = 0.25,
     random_state: int = 42,
 ) -> Tuple[Pipeline, Dict[str, float]]:
-    X, y, _ = _load_xy(min_samples=min_samples, prefer_db=True)
+    X, y, _ = _load_xy(min_samples=min_samples)
     X_train, X_val, y_train, y_val = train_test_split(
         X, y, test_size=test_size, random_state=random_state, stratify=y
     )
@@ -220,7 +160,7 @@ def train_logistic_model(
 
 
 def evaluate_logistic(min_samples: int = 50) -> LogisticMetrics:
-    X, y, data_source = _load_xy(min_samples=min_samples, prefer_db=True)
+    X, y, data_source = _load_xy(min_samples=min_samples)
 
     model = Pipeline([
         ("scaler", StandardScaler()),

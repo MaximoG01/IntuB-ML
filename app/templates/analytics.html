@@ -3,12 +3,6 @@
 
 <h2>Analytics</h2>
 
-{% if data_source == "synthetic" %}
-  <div style="padding:10px 12px;margin-bottom:12px;background:#fff7f7;border:1px solid #f5d0d0;border-radius:8px;color:#b42318;">
-    <strong>⚠ Demo Data</strong> — Your database is empty. Showing synthetic seed data. Once you add real cases to the dashboard, this will update to show your model's performance.
-  </div>
-{% endif %}
-
 {% if error %}
   <div class="alert alert-warning">{{ error }}</div>
 {% endif %}
@@ -110,78 +104,9 @@
   <p style="color:#9ca3af; font-style:italic;">Network visualization unavailable (PyTorch not available or insufficient data).</p>
 {% endif %}
 
-<hr>
-
-<h3>Loss Landscape (2D PCA Projection of 10 Clinical Features)</h3>
-<p style="color:#52606d; max-width: 900px;">
-  <strong>What you're seeing:</strong> A 3D visualization of loss as a function of two synthetic axes (a, b) derived from 
-  <strong>PCA dimensionality reduction</strong> of your 10 clinical features (age, weight, height, BMI, sex, DTM, DII, Mallampati, STOP-BANG, Alganzouri).
-  <br><br>
-  <strong>The axes:</strong> PC1 (45.6% variance) and PC2 (40.1% variance) capture 85.6% of your data's structure. The red/warm regions indicate low loss (good fit), 
-  while blue/cool regions indicate high loss (poor fit).
-  <br><br>
-  <strong>The trajectory:</strong> The bright green line shows how the neural network's weights evolved during training, moving through this 2D 
-  PCA-projected parameter space. Ideally, it should flow downhill toward the red valley (minimum loss).
-  <br><br>
-  <em>Note: This is NOT feature space; it's weight space projected to 2D for visualization.</em>
-</p>
-
-<div id="lossSurfacePlot" style="height:420px;"></div>
+{% if nn_metrics %}
 
 <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
-<script>
-  const LS = {{ loss_surface | tojson }};
-
-  const X = LS.X;
-  const Y = LS.Y;
-  const Z = LS.Z;
-
-  const surface = {
-    type: "surface",
-    x: X, y: Y, z: Z,
-    showscale: true,
-    opacity: 0.92
-  };
-
-  let traces = [surface];
-
-  if (LS.traj) {
-    const trajX = LS.traj.map(p => p.a);
-    const trajY = LS.traj.map(p => p.b);
-    const lossLen = (LS.loss_history || []).length;
-    const trajLen = LS.traj.length;
-    const zMax = Math.max(...Z.flat());
-    const zOffset = isFinite(zMax) ? (zMax + 0.05) : 0.05;
-    const trajZ = (lossLen === trajLen && lossLen > 0)
-      ? LS.loss_history
-      : Array(trajLen).fill(zOffset);
-
-    traces.push({
-      type: "scatter3d",
-      mode: "lines+markers",
-      x: trajX,
-      y: trajY,
-      z: trajZ,
-      line: { color: "rgb(0, 255, 0)", width: 8 },
-      marker: { size: 5, color: "rgb(0, 200, 0)" },
-      name: "Training trajectory"
-    });
-  }
-
-  const layout = {
-    margin: {l: 0, r: 0, t: 30, b: 0},
-    title: "Binary Cross-Entropy Loss across 2D PCA-Projected Parameter Space",
-    scene: {
-      xaxis: { title: "PC1 (45.6% variance)" },
-      yaxis: { title: "PC2 (40.1% variance)" },
-      zaxis: { title: "Loss (Binary Cross-Entropy)" }
-    }
-  };
-
-  Plotly.newPlot("lossSurfacePlot", traces, layout, {displayModeBar: true});
-</script>
-
-{% if nn_metrics %}
 
 <hr>
 

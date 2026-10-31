@@ -53,8 +53,12 @@ età, sesso, altezza (→ BMI), STOP-BANG (rischio OSAS), farmaco, tecnica.
 
 ## 3. Dati
 
-### 3.1 Dati sintetici (oggi)
-- `app/ml.py::_synthetic_seed` genera una variabile latente da età, BMI, DTM e DII; da quella
+### 3.1 Dati sintetici — ABBANDONATI (31/10/2026)
+Decisione: i dati sintetici non si usano più, e i generatori sono stati rimossi dal codice.
+Generare casi dalla formula di El-Ganzouri e poi validarci sopra un modello restituisce la formula
+stessa: è un risultato circolare, e le metriche sono fuorvianti. Resta qui la diagnosi, come memoria.
+
+- `app/ml.py::_synthetic_seed` (rimosso) generava una variabile latente da età, BMI, DTM e DII; da quella
   derivano Mallampati, STOP-BANG, "alganzouri" e Cormack, con poco rumore.
 - Risultato misurato (31/10/2026, 2.000 casi, CV a 5 fold): prevalenza **56%**, AUC della
   logistica **0,999**, AUC del solo "alganzouri" **0,996**. Il generatore è quasi deterministico
@@ -63,27 +67,30 @@ età, sesso, altezza (→ BMI), STOP-BANG (rischio OSAS), farmaco, tecnica.
   `seed_proper.py`). `seed_realistic.py`, usato dagli script di deploy Heroku, estrae il Cormack
   **a caso, indipendente dalle variabili**: con quei dati nessun modello può imparare nulla.
 
-### 3.2 Generatore sintetico v2 (proposta)
-Scopo dichiarato: **provare il codice e le pipeline**, mai stimare le prestazioni reali.
-- Un solo generatore, con seme fisso, versionato (`data/synthetic/v2`).
-- Distribuzioni dei 7 item EGRI e di età/sesso/peso da letteratura (marginali realistiche).
-- Esito da un modello logistico con **odds ratio di letteratura** + rumore realistico, e
-  prevalenza obiettivo configurabile (es. 7% per Cormack 3–4).
-- Obiettivo di verifica: l'EGRI ≥ 4 sui dati sintetici deve dare sensibilità/specificità
-  dell'ordine di quelle pubblicate, non un'AUC vicina a 1.
-- Il bias resta (il modello "ritrova" la formula usata per generare): va scritto nei risultati.
+### 3.2 Modello di partenza senza dati sintetici
+Il "modello precaricato" è l'EGRI stesso scritto come logistica (M0/M1, §4): pesi presi dal
+lavoro del 1996, dichiarati come tali. Si aggiorna solo con dati reali (prima ricalibrazione,
+poi stima di pesi nuovi).
 
-### 3.3 Dati reali — dove cercarli
-Non risultano dataset aperti, grandi e pronti all'uso con Cormack + valutazione pre-operatoria
-delle vie aeree. Strade realistiche, in ordine di fattibilità:
-1. **Raccolta prospettica propria** con l'app (è lo scopo dell'app): serve approvazione del
-   comitato etico, informativa privacy e dati **pseudonimizzati** (GDPR art. 9, dati sanitari).
-2. **Dati di studi pubblicati**: chiedere i dati individuali agli autori di studi di validazione
-   EGRI (molti riviste chiedono la condivisione dei dati su richiesta).
-3. **Database clinici con accesso controllato** (es. PhysioNet: MIMIC, VitalDB): richiedono
-   registrazione e corso; vanno verificati, perché spesso **non** contengono Cormack o Mallampati.
-4. Registri nazionali di vie aeree difficili (es. registri DAS/SIAARTI o simili): verificare l'esistenza e le condizioni d'accesso.
-- **[DA DECIDERE]** quale strada attivare per prima. Proposta: 1 + 2 in parallelo.
+### 3.3 Dati reali — dove cercarli (ricerca del 31/10/2026)
+Non risultano dataset aperti con Cormack **e** esame completo delle vie aeree (Mallampati, DTM...).
+
+| Fonte | Accesso | Cosa c'è | Uso possibile |
+|---|---|---|---|
+| **VitalDB** (Seoul National Univ. Hospital), su PhysioNet | **aperto**, CC-BY 4.0 | 6.388 interventi; `cormack` per 5.553: I 5.178, II 235, IIIa 91, IIIb 35, IV 14 → **140 casi 3–4 (2,5%)**; età, sesso, altezza, peso, BMI, ASA, tipo di intervento, esami pre-op. **Nessun Mallampati** né altro esame vie aeree | modello "solo dati demografici" come confronto; studio della prevalenza; test della pipeline su dati veri |
+| **MIMIC-IV** (PhysioNet) | credenziali + corso CITI | terapia intensiva; intubazioni presenti; Cormack/Mallampati probabilmente solo nelle note libere | da verificare (MIMIC-IV-Note) |
+| R `medicaldata::laryngoscope` | aperto | RCT ~100 obesi, Pentax AWS vs Macintosh | solo didattico |
+| Studi pubblicati (es. Frontiers Public Health 2022, dati su BioStudies) | da verificare | variabili demografiche, ML a confronto | da verificare |
+| Database nazionali (danese DAD, MPOG USA) | su richiesta/consorzio | grandi coorti con valutazione vie aeree | richiesta formale di collaborazione |
+
+Strade, in ordine di fattibilità:
+1. **VitalDB subito** (aperto): pipeline e modello demografico su 5.553 casi reali.
+2. **Raccolta prospettica propria** con l'app: serve comitato etico, informativa privacy e dati
+   **pseudonimizzati** (GDPR art. 9).
+3. **Dati individuali da autori** di studi di validazione EGRI; contatti con DAD/MPOG.
+4. **MIMIC-IV**: richiedere le credenziali e verificare se le note contengono il Cormack.
+
+Il file VitalDB si scarica in `data/external/vitaldb/` (ignorato da git; licenza CC-BY: citare la fonte).
 
 ### 3.4 Dimensione campionaria
 Con un esito raro servono molti casi. Riferimento: criteri di Riley et al. (BMJ 2020) per modelli
@@ -167,10 +174,11 @@ Non funzionali:
 | 1 | ✅ 31/10/2026 — `app.db`, `db_export/`, `intub-export.zip` tolti dal repo e da `.gitignore` | radice | — |
 | 2 | ✅ 31/10/2026 — rimosso l'endpoint `/seed-db-secret-key-12345` (cancellava tutti i casi senza login) | `app/routes.py` | — |
 | 3 | ✅ 31/10/2026 — `SECRET_KEY` solo da variabile d'ambiente (altrimenti casuale) | `config.py` | — |
-| 4 | Campi vuoti convertiti in 0 nella predizione | `app/routes.py::predict` | alta |
+| 4 | ✅ Campi vuoti non più convertiti in 0; il caso si salva anche senza modello | `app/routes.py::predict` | — |
 | 5 | Logistica riallenata a ogni predizione e a ogni apertura di Analytics | `app/routes.py` | media |
-| 6 | Soglia 0,15 nella logistica, 0,5 nella rete: metriche non confrontabili | `app/ml.py`, `app/ml_nn.py` | media |
-| 7 | Traiettoria sul "loss surface": proietta i primi 10 pesi della rete sulle componenti PCA dei dati, grandezze che non c'entrano tra loro → il grafico non ha significato | `app/routes.py::analytics` | media |
-| 8 | Tre generatori sintetici incoerenti | radice, `app/` | media |
-| 9 | ~25 script di debug/test e 12 file .md vecchi in radice; `__pycache__` committati | radice | bassa |
-| 10 | Remote `heroku` ancora configurato | git | bassa |
+| 6 | ✅ Stessa soglia 0,15 per logistica e rete | `app/ml_nn.py` | — |
+| 7 | ✅ Rimosso il "loss landscape" con traiettoria (proiettava pesi della rete su componenti PCA dei dati: senza significato) | `analytics` | — |
+| 8 | ✅ Rimossi generatori sintetici e fallback; senza dati l'app lo dice | `app/ml.py` | — |
+| 9 | ✅ Rimossi script di debug/test e deploy Heroku; vecchi .md in `docs/legacy/` | radice | — |
+| 10 | ✅ Rimosso `wsl_import.sh` con **password del DB Heroku in chiaro**; storia git ripulita | radice | — |
+| 11 | `app/nn_viz.py::loss_surface_2d_safe` non più usata | `app/nn_viz.py` | bassa |

@@ -12,3 +12,6 @@ db_export/
 *.sql
 .env
 .env.*
+
+# downloaded datasets (e.g. VitalDB): fetched by scripts, not versioned
+data/

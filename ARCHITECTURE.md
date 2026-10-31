@@ -29,7 +29,7 @@ Principio: **si allena in locale, online si usa e basta.**
 ```
 ┌──────────────── LOCALE (PC del ricercatore) ────────────────┐
 │ training/                                                   │
-│   data_synth.py   generatore sintetico v2 (seme fisso)      │
+│   vitaldb.py      scarica e pulisce VitalDB (CC-BY 4.0)     │
 │   pull_data.py    scarica i casi pseudonimizzati dall'API   │
 │   pipeline.py     pulizia → imputazione → spline → scaler   │
 │   compare.py      M0–M4, CV ripetuta, metriche SPEC §6      │

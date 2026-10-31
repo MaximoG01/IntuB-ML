@@ -17,18 +17,12 @@ Il progetto ha due obiettivi:
 | Parte | Stato |
 |---|---|
 | App Flask (login, inserimento casi, predizione, analytics, blog) | funziona in locale |
-| Dati | 2.000 casi **sintetici** + pochi casi di test; nessun dato reale |
-| Modelli | regressione logistica (scikit-learn); rete "distillata" 10→16→1 (PyTorch) |
-| Deployment | era su Heroku (ora da sostituire, vedi [ARCHITECTURE.md](ARCHITECTURE.md)) |
+| Dati | **nessun dato**: i dati sintetici sono stati abbandonati (circolari, vedi [SPEC.md](SPEC.md) §3.1). Prossima fonte: VitalDB (aperto) |
+| Modelli | regressione logistica (scikit-learn); rete "distillata" 10→16→1 (PyTorch). Si allenano solo quando ci sono abbastanza casi reali |
+| Deployment | era su Heroku (dismesso; alternative in [ARCHITECTURE.md](ARCHITECTURE.md)) |
 
-⚠️ Problemi noti più importanti (dettagli in [SPEC.md](SPEC.md)):
-- I dati sintetici sono quasi deterministici (AUC ≈ 0,999 per qualunque modello): servono solo a
-  provare il codice, **non** a dire quale modello è migliore.
-- Prevalenza sintetica 56% di casi difficili; nella realtà Cormack 3–4 è molto più raro.
-- Nessun dato reale: le metriche mostrate dall'app non dicono nulla sulle prestazioni cliniche.
-
-Il database **non** è nel repo: in locale si crea con `flask db upgrade` e si popola con uno
-script di seed (vedi SPEC §3).
+Il database **non** è nel repo: in locale si crea vuoto con `flask db upgrade`.
+Finché non ci sono almeno 20 casi con esito, l'app permette di inserire casi ma non mostra predizioni.
 
 ## Documentazione
 

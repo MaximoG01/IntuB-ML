@@ -13,7 +13,7 @@ from app.ml import (
     evaluate_logistic,
     build_feature_vector,
     DIFFICULT_THRESHOLD,
-    _load_xy,
+    InsufficientDataError,
 )
 
 from app.ml_nn import (
@@ -21,7 +21,7 @@ from app.ml_nn import (
     TORCH_AVAILABLE,
 )
 
-from app.nn_viz import loss_surface_2d_safe, nn_svg_from_weights
+from app.nn_viz import nn_svg_from_weights
 
 bp = Blueprint("main", __name__)
 
@@ -152,27 +152,33 @@ def predict():
 
     if request.method == "POST":
         try:
-            # Train/retrain logistic on available labeled data (or seed if your ml.py does that)
-            model, _ = train_logistic_model(min_samples=20)
-
-            # Build an in-memory record-like object (not saved unless user chooses)
+            # Build an in-memory record-like object (not saved unless user chooses).
+            # Empty fields stay None: the model must not read them as 0.
             dummy = SimpleNamespace(
                 age=int(request.form.get("age")),
                 weight=float(request.form.get("weight")),
-                height=float(request.form.get("height") or 0),
+                height=_float_or_none(request.form.get("height")),
                 sex=request.form.get("sex"),
-                dtm=float(request.form.get("dtm") or 0),
-                dii=float(request.form.get("dii") or 0),
-                mallampati=int(request.form.get("mallampati") or 0),
-                stop_bang=int(request.form.get("stop_bang") or 0),
-                alganzouri=int(request.form.get("alganzouri") or 0),
+                dtm=_float_or_none(request.form.get("dtm")),
+                dii=_float_or_none(request.form.get("dii")),
+                mallampati=_int_or_none(request.form.get("mallampati")),
+                stop_bang=_int_or_none(request.form.get("stop_bang")),
+                alganzouri=_int_or_none(request.form.get("alganzouri")),
             )
+        except (TypeError, ValueError):
+            err = "Age and weight are required; other fields must be numbers or left empty."
+            dummy = None
 
-            X = np.array([build_feature_vector(dummy)], dtype=float)
-            p = float(model.predict_proba(X)[0][1])
-
-            proba = p
-            difficult_pred = (p >= DIFFICULT_THRESHOLD)
+        if dummy is not None:
+            # Prediction is optional: without enough labeled cases there is no model,
+            # but the case can still be saved.
+            try:
+                model, _ = train_logistic_model(min_samples=20)
+                X = np.array([build_feature_vector(dummy)], dtype=float)
+                proba = float(model.predict_proba(X)[0][1])
+                difficult_pred = proba >= DIFFICULT_THRESHOLD
+            except InsufficientDataError as e:
+                err = f"No model available yet. {e}"
 
             action = request.form.get("action", "predict")
 
@@ -213,9 +219,6 @@ def predict():
                 db.session.commit()
                 saved_record_id = rec.id
                 flash("Case saved as pending. Complete it later from Dashboard.", "success")
-
-        except Exception as e:
-            err = str(e)
 
     return render_template(
         "predict.html",
@@ -340,69 +343,26 @@ def analytics():
     log_metrics = None
     nn_metrics = None
     nn_error = None
-    loss_surface = None
     error = None
 
     # Logistic regression metrics
     try:
         log_metrics = evaluate_logistic(min_samples=20)
+    except InsufficientDataError as e:
+        error = str(e)
     except Exception as e:
         error = f"Logistic regression failed: {e}"
 
-    # NN metrics (optional, supports pre-trained weights when Torch is unavailable)
+    # NN metrics (optional: needs PyTorch locally, or exported weights)
     try:
         nn_metrics = evaluate_nn(min_samples=20)
+    except InsufficientDataError as e:
+        nn_error = str(e)
     except Exception as e:
         nn_error = f"Neural network unavailable: {e}"
 
-    if nn_metrics is None and not TORCH_AVAILABLE:
-        nn_error = "PyTorch is not available. NN analytics skipped."
-
-    # Loss surface (use DB data if available for realistic rendering)
-    try:
-        X_db, y_db, data_source = None, None, "synthetic"
-        try:
-            X_db, y_db, data_source = _load_xy(min_samples=20, prefer_db=True)
-        except Exception:
-            # _load_xy may raise or return synthetic if DB empty
-            X_db, y_db, data_source = None, None, "synthetic"
-
-        loss_surface = loss_surface_2d_safe(X=X_db, y=y_db)
-        
-        # Add trajectory data to loss surface if we have NN training history
-        if loss_surface and nn_metrics and nn_metrics.get("theta_history"):
-            try:
-                import numpy as np
-                # Project theta_history to the same 2D PCA space as the loss surface
-                theta_hist = np.array(nn_metrics["theta_history"])  # shape: (epochs, n_weights)
-                
-                # Use same PCA projection as the data
-                if X_db is not None and y_db is not None:
-                    Xc = X_db.astype(float) - np.nanmean(X_db, axis=0)
-                    u, s, vt = np.linalg.svd(np.nan_to_num(Xc), full_matrices=False)
-                    comps = vt[:2].T  # (n_features, 2)
-                    
-                    # Project first 2 theta dimensions to 2D
-                    if theta_hist.shape[1] >= 2:
-                        # For each epoch's weights, project to 2D
-                        traj_2d = []
-                        for weights in theta_hist:
-                            # Pad to match feature dimension if needed
-                            w = np.zeros(X_db.shape[1])
-                            w[:min(len(weights), len(w))] = weights[:min(len(weights), len(w))]
-                            proj = (w @ comps).tolist()
-                            traj_2d.append({"a": proj[0], "b": proj[1]})
-                        
-                        loss_surface["traj"] = traj_2d
-                        loss_surface["loss_history"] = nn_metrics.get("loss_history", [])
-                        print(f"Added trajectory with {len(traj_2d)} points")
-            except Exception as e:
-                print(f"Trajectory projection error: {e}")
-                # Loss surface still works without trajectory
-
-    except Exception as e:
-        loss_surface = None
-        print("Loss surface generation error:", e)
+    if nn_metrics is None and nn_error is None and not TORCH_AVAILABLE:
+        nn_error = "PyTorch is not available and no exported weights were found. NN analytics skipped."
 
     # NN SVG: prefer real NN weights, otherwise fall back to logistic coefficients
     nn_svg = None
@@ -455,10 +415,8 @@ def analytics():
         log_metrics=log_metrics,
         nn_metrics=nn_metrics,
         nn_error=nn_error,
-        loss_surface=loss_surface,
         nn_svg=nn_svg,
         error=error,
-        data_source=data_source if log_metrics else "unknown",
     )
 
 
