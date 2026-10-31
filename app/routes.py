@@ -1,4 +1,3 @@
-import numpy as np
 from types import SimpleNamespace
 from sqlalchemy import or_
 from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
@@ -9,19 +8,12 @@ from app.models import User, IntubationRecord
 from app.forms import LoginForm, RegistrationForm
 
 from app.ml import (
-    train_logistic_model,
     evaluate_logistic,
-    build_feature_vector,
     DIFFICULT_THRESHOLD,
     InsufficientDataError,
 )
-
-from app.ml_nn import (
-    evaluate_nn,
-    TORCH_AVAILABLE,
-)
-
-from app.nn_viz import nn_svg_from_weights
+from app.egri import egri_from_record, NECK_MOVEMENT_CHOICES, HISTORY_CHOICES
+from app.inference import active_model, predict as predict_proba
 
 bp = Blueprint("main", __name__)
 
@@ -145,85 +137,50 @@ def predict():
     GET: show input form
     POST: run prediction; optionally save pending case (no outcome yet)
     """
-    proba = None
-    difficult_pred = None
+    result = None
+    egri = None
     saved_record_id = None
     err = None
+    model = active_model()
 
     if request.method == "POST":
         try:
-            # Build an in-memory record-like object (not saved unless user chooses).
             # Empty fields stay None: the model must not read them as 0.
-            dummy = SimpleNamespace(
-                age=int(request.form.get("age")),
-                weight=float(request.form.get("weight")),
-                height=_float_or_none(request.form.get("height")),
-                sex=request.form.get("sex"),
-                dtm=_float_or_none(request.form.get("dtm")),
-                dii=_float_or_none(request.form.get("dii")),
-                mallampati=_int_or_none(request.form.get("mallampati")),
-                stop_bang=_int_or_none(request.form.get("stop_bang")),
-                alganzouri=_int_or_none(request.form.get("alganzouri")),
-            )
-        except (TypeError, ValueError):
-            err = "Age and weight are required; other fields must be numbers or left empty."
-            dummy = None
+            data = _assessment_from_form(request.form)
+        except ValueError as e:
+            err = str(e) if "obbligatori" in str(e) else "Valori non validi: usa numeri o lascia vuoto."
+            data = None
 
-        if dummy is not None:
-            # Prediction is optional: without enough labeled cases there is no model,
-            # but the case can still be saved.
-            try:
-                model, _ = train_logistic_model(min_samples=20)
-                X = np.array([build_feature_vector(dummy)], dtype=float)
-                proba = float(model.predict_proba(X)[0][1])
-                difficult_pred = proba >= DIFFICULT_THRESHOLD
-            except InsufficientDataError as e:
-                err = f"No model available yet. {e}"
+        if data is not None:
+            dummy = SimpleNamespace(**data)
+            egri = egri_from_record(dummy)
+            pred = predict_proba(dummy, model)
+            if pred is not None:
+                proba, contributions = pred
+                result = {"probability": proba, "difficult": proba >= DIFFICULT_THRESHOLD,
+                          "contributions": contributions}
 
-            action = request.form.get("action", "predict")
-
-            if action == "save":
+            if request.form.get("action") == "save":
                 if not current_user.is_authenticated:
-                    flash("Login required to save a pending case.", "warning")
-                    return render_template(
-                        "predict.html",
-                        probability=proba,
-                        difficult=difficult_pred,
-                        threshold=DIFFICULT_THRESHOLD,
-                        saved_record_id=None,
-                        error=err,
+                    flash("Accedi per salvare il caso.", "warning")
+                else:
+                    # Pending case: outcome stays NULL until completed after intubation
+                    rec = IntubationRecord(
+                        operator_id=current_user.id,
+                        predicted_proba=result["probability"] if result else None,
+                        model_version=model["name"] if result else None,
+                        **data,
                     )
-                # Save as pending: outcomes are NULL until the clinician completes later
-                rec = IntubationRecord(
-                    operator_id=current_user.id,
-
-                    age=dummy.age,
-                    weight=dummy.weight,
-                    height=dummy.height,
-                    sex=dummy.sex,
-                    dtm=dummy.dtm,
-                    dii=dummy.dii,
-                    mallampati=dummy.mallampati,
-                    stop_bang=dummy.stop_bang,
-                    alganzouri=dummy.alganzouri,
-
-                    drug_used=request.form.get("drug_used") or None,
-                    technique=request.form.get("technique") or None,
-
-                    success=None,
-                    cormack=None,
-                    difficult_binary=None,
-                )
-
-                db.session.add(rec)
-                db.session.commit()
-                saved_record_id = rec.id
-                flash("Case saved as pending. Complete it later from Dashboard.", "success")
+                    db.session.add(rec)
+                    db.session.commit()
+                    saved_record_id = rec.id
+                    flash("Caso salvato in attesa di esito: completalo dopo l'intubazione.", "success")
 
     return render_template(
         "predict.html",
-        probability=proba,
-        difficult=difficult_pred,
+        result=result,
+        egri=egri,
+        model=model,
         threshold=DIFFICULT_THRESHOLD,
         saved_record_id=saved_record_id,
         error=err,
@@ -242,19 +199,9 @@ def complete_case(record_id: int):
         abort(404)
 
     if request.method == "POST":
-        # success: "1" / "0"
-        success_raw = request.form.get("success")
-        rec.success = True if success_raw == "1" else False if success_raw == "0" else None
-
-        # cormack: 1..4 (or empty)
-        cormack_raw = request.form.get("cormack", "").strip()
-        rec.cormack = int(cormack_raw) if cormack_raw else None
-
-        # standardize difficulty from Cormack (>2 = difficult)
-        rec.difficult_binary = (rec.cormack > 2) if rec.cormack is not None else None
-
+        _apply_outcome(rec, request.form)
         db.session.commit()
-        flash("Case completed and added to training dataset.", "success")
+        flash("Esito registrato.", "success")
         return redirect(url_for("main.dashboard"))
 
     return render_template("complete_case.html", rec=rec)
@@ -266,7 +213,7 @@ def complete_case(record_id: int):
 def _float_or_none(value: str | None) -> float | None:
     if value is None:
         return None
-    value = value.strip()
+    value = value.strip().replace(",", ".")
     return float(value) if value else None
 
 
@@ -277,30 +224,58 @@ def _int_or_none(value: str | None) -> int | None:
     return int(value) if value else None
 
 
+def _bool_or_none(value: str | None) -> bool | None:
+    return {"1": True, "0": False}.get((value or "").strip())
+
+
+def _assessment_from_form(form) -> dict:
+    """Pre-intubation fields shared by predict, new and edit. Raises ValueError if invalid."""
+    age, weight = _int_or_none(form.get("age")), _float_or_none(form.get("weight"))
+    if age is None or weight is None:
+        raise ValueError("Età e peso sono obbligatori.")
+    data = dict(
+        age=age,
+        weight=weight,
+        height=_float_or_none(form.get("height")),
+        sex=form.get("sex") or None,
+        asa=_int_or_none(form.get("asa")),
+        emergency=_bool_or_none(form.get("emergency")),
+        dtm=_float_or_none(form.get("dtm")),
+        dii=_float_or_none(form.get("dii")),
+        mallampati=_int_or_none(form.get("mallampati")),
+        neck_movement=_int_or_none(form.get("neck_movement")),
+        can_prognath=_bool_or_none(form.get("can_prognath")),
+        history_difficult=_int_or_none(form.get("history_difficult")),
+        stop_bang=_int_or_none(form.get("stop_bang")),
+        drug_used=form.get("drug_used") or None,
+        technique=form.get("technique") or None,
+    )
+    # EGRI total computed from the items, never typed in (None if an item is missing)
+    data["alganzouri"] = egri_from_record(SimpleNamespace(**data)).total
+    return data
+
+
+def _apply_outcome(rec: IntubationRecord, form) -> None:
+    rec.success = _bool_or_none(form.get("success"))
+    rec.cormack = _int_or_none(form.get("cormack"))
+    rec.cormack_device = form.get("cormack_device") or None
+    # standardize difficulty from Cormack (>2 = difficult)
+    rec.difficult_binary = (rec.cormack > 2) if rec.cormack is not None else None
+
+
 @bp.route("/case/new", methods=["GET", "POST"])
 @login_required
 def new_case():
     if request.method == "POST":
-        rec = IntubationRecord(
-            operator_id=current_user.id,
-            age=int(request.form.get("age")),
-            weight=float(request.form.get("weight")),
-            height=_float_or_none(request.form.get("height")),
-            sex=request.form.get("sex") or None,
-            dtm=_float_or_none(request.form.get("dtm")),
-            dii=_float_or_none(request.form.get("dii")),
-            mallampati=_int_or_none(request.form.get("mallampati")),
-            stop_bang=_int_or_none(request.form.get("stop_bang")),
-            alganzouri=_int_or_none(request.form.get("alganzouri")),
-            drug_used=request.form.get("drug_used") or None,
-            technique=request.form.get("technique") or None,
-            success=True if request.form.get("success") == "1" else False,
-            cormack=_int_or_none(request.form.get("cormack")),
-        )
-        rec.difficult_binary = (rec.cormack > 2) if rec.cormack is not None else None
+        try:
+            rec = IntubationRecord(operator_id=current_user.id, **_assessment_from_form(request.form))
+        except ValueError as e:
+            flash(str(e), "danger")
+            return render_template("case_form.html", rec=None)
+        _apply_outcome(rec, request.form)
         db.session.add(rec)
         db.session.commit()
-        flash("Case saved.", "success")
+        flash("Caso salvato.", "success")
         return redirect(url_for("main.dashboard"))
 
     return render_template("case_form.html", rec=None)
@@ -314,110 +289,50 @@ def edit_case(record_id: int):
         abort(404)
 
     if request.method == "POST":
-        rec.age = int(request.form.get("age"))
-        rec.weight = float(request.form.get("weight"))
-        rec.height = _float_or_none(request.form.get("height"))
-        rec.sex = request.form.get("sex") or None
-        rec.dtm = _float_or_none(request.form.get("dtm"))
-        rec.dii = _float_or_none(request.form.get("dii"))
-        rec.mallampati = _int_or_none(request.form.get("mallampati"))
-        rec.stop_bang = _int_or_none(request.form.get("stop_bang"))
-        rec.alganzouri = _int_or_none(request.form.get("alganzouri"))
-        rec.drug_used = request.form.get("drug_used") or None
-        rec.technique = request.form.get("technique") or None
-        rec.success = True if request.form.get("success") == "1" else False
-        rec.cormack = _int_or_none(request.form.get("cormack"))
-        rec.difficult_binary = (rec.cormack > 2) if rec.cormack is not None else None
+        try:
+            data = _assessment_from_form(request.form)
+        except ValueError as e:
+            flash(str(e), "danger")
+            return render_template("case_form.html", rec=rec)
+        for k, v in data.items():
+            setattr(rec, k, v)
+        _apply_outcome(rec, request.form)
         db.session.commit()
-        flash("Case updated.", "success")
+        flash("Caso aggiornato.", "success")
         return redirect(url_for("main.dashboard"))
 
     return render_template("case_form.html", rec=rec)
 
 
 # ------------------------------------------------------
-# ANALYTICS (LOG-REG + optional NN + LOSS SURFACE)
+# MODEL: active exported model + cases collected in this app
 # ------------------------------------------------------
 @bp.route("/analytics")
 def analytics():
-    log_metrics = None
-    nn_metrics = None
-    nn_error = None
-    error = None
-
-    # Logistic regression metrics
+    model = active_model()
+    local_metrics = None
+    local_error = None
     try:
-        log_metrics = evaluate_logistic(min_samples=20)
+        # quick internal check on the cases collected here (not the active model)
+        local_metrics = evaluate_logistic(min_samples=20)
     except InsufficientDataError as e:
-        error = str(e)
+        local_error = str(e)
     except Exception as e:
-        error = f"Logistic regression failed: {e}"
+        local_error = f"Logistic regression failed: {e}"
 
-    # NN metrics (optional: needs PyTorch locally, or exported weights)
-    try:
-        nn_metrics = evaluate_nn(min_samples=20)
-    except InsufficientDataError as e:
-        nn_error = str(e)
-    except Exception as e:
-        nn_error = f"Neural network unavailable: {e}"
-
-    if nn_metrics is None and nn_error is None and not TORCH_AVAILABLE:
-        nn_error = "PyTorch is not available and no exported weights were found. NN analytics skipped."
-
-    # NN SVG: prefer real NN weights, otherwise fall back to logistic coefficients
-    nn_svg = None
-    input_names = [
-        "age",
-        "weight",
-        "height",
-        "bmi",
-        "sex",
-        "dtm",
-        "dii",
-        "mallampati",
-        "stop_bang",
-        "alganzouri",
-    ]
-    
-    try:
-        if nn_metrics:
-            # Use actual NN weights if available (pre-trained JSON works without Torch)
-            w1 = nn_metrics.get("w1", [])
-            b1 = nn_metrics.get("b1", [])
-            w2 = nn_metrics.get("w2", None)
-            b2 = nn_metrics.get("b2", None)
-
-            if w1 and b1:
-                nn_svg = nn_svg_from_weights(w1, b1, w2, b2, input_names=input_names)
-                print("Generated NN SVG from actual NN weights")
-        
-        # Fallback: visualize logistic regression coefficients as single hidden layer
-        if nn_svg is None and log_metrics:
-            try:
-                model, _ = train_logistic_model(min_samples=20)
-                lr = model.named_steps.get("lr")
-                if lr is not None:
-                    coef = lr.coef_[0].tolist()
-                    intercept = [float(lr.intercept_[0])]
-                    nn_svg = nn_svg_from_weights([coef], intercept, w2=None, b2=None, input_names=input_names)
-                    print("Generated NN SVG from logistic regression fallback")
-            except Exception as e:
-                print(f"Logistic SVG fallback failed: {e}")
-                nn_svg = None
-    except Exception as e:
-        print(f"NN SVG generation error: {e}")
-        import traceback
-        traceback.print_exc()
-        nn_svg = None
-
+    n_labeled = IntubationRecord.query.filter(IntubationRecord.difficult_binary.isnot(None)).count()
     return render_template(
         "analytics.html",
-        log_metrics=log_metrics,
-        nn_metrics=nn_metrics,
-        nn_error=nn_error,
-        nn_svg=nn_svg,
-        error=error,
+        model=model,
+        local_metrics=local_metrics,
+        local_error=local_error,
+        n_labeled=n_labeled,
     )
+
+
+@bp.app_context_processor
+def _inject_choices():
+    return {"NECK_MOVEMENT_CHOICES": NECK_MOVEMENT_CHOICES, "HISTORY_CHOICES": HISTORY_CHOICES}
 
 
 # ------------------------------------------------------

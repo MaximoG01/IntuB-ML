@@ -1,77 +1,71 @@
 {% extends "base.html" %}
+{% block title %}Valuta — intuB{% endblock %}
 {% block content %}
 
-<h2>Prediction</h2>
-<p style="color:#52606d;">Compute predicted probability of difficult intubation. Logged-in users can save as <strong>pending</strong> and label the outcome later.</p>
+<h2>Valuta il paziente</h2>
+<p class="muted">Rischio di laringoscopia difficile (Cormack-Lehane 3–4). Soglia: {{ (threshold * 100)|round|int }}%.
+  <strong>Non è un dispositivo medico.</strong></p>
 
-<form method="post">
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
-    <div>
-      <label>Age</label>
-      <input name="age" type="number" value="{{ request.form.get('age','') }}">
-    </div>
-    <div>
-      <label>Weight (kg)</label>
-      <input name="weight" type="number" step="0.1" value="{{ request.form.get('weight','') }}">
-    </div>
-    <div>
-      <label>Height (cm)</label>
-      <input name="height" type="number" step="0.1" value="{{ request.form.get('height','') }}">
-    </div>
-    <div>
-      <label>Sex</label>
-      <select name="sex">
-        <option value="M" {% if request.form.get('sex')=='M' %}selected{% endif %}>Male</option>
-        <option value="F" {% if request.form.get('sex')=='F' %}selected{% endif %}>Female</option>
-      </select>
-    </div>
+{% if error %}<div class="flash flash-danger">{{ error }}</div>{% endif %}
 
+{% if egri is not none %}
+<section class="result-card {% if result and result.difficult %}result-high{% else %}result-low{% endif %}">
+  <div class="result-grid">
     <div>
-      <label>Thyromental distance (DTM)</label>
-      <input name="dtm" type="number" step="0.1" value="{{ request.form.get('dtm','') }}">
+      <h3>Modello statistico</h3>
+      {% if result %}
+        <p class="result-number">{{ (result.probability * 100)|round(1) }}%</p>
+        <div class="meter" role="img" aria-label="rischio {{ (result.probability * 100)|round(1) }}% su soglia {{ (threshold * 100)|round|int }}%">
+          <div class="meter-fill" style="width: {{ [result.probability / 0.30 * 100, 100]|min }}%"></div>
+          <div class="meter-threshold" style="left: {{ threshold / 0.30 * 100 }}%"></div>
+        </div>
+        <p class="result-label">
+          {% if result.difficult %}▲ SOPRA SOGLIA — prepara il piano B{% else %}● Sotto soglia{% endif %}
+        </p>
+        <p class="muted small">Fattori che pesano di più:</p>
+        <ul class="factors">
+          {% for c in result.contributions[:3] %}
+            <li>{{ "+" if c.contribution > 0 else "−" }} {{ c.label }}
+              {% if c.imputed %}<span class="muted">(mancante: usata la mediana)</span>{% endif %}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">Nessun modello attivo.</p>
+      {% endif %}
     </div>
     <div>
-      <label>Interincisor distance (DII)</label>
-      <input name="dii" type="number" step="0.1" value="{{ request.form.get('dii','') }}">
-    </div>
-    <div>
-      <label>Mallampati</label>
-      <input name="mallampati" type="number" min="0" max="4" value="{{ request.form.get('mallampati','') }}">
-    </div>
-    <div>
-      <label>STOP-BANG</label>
-      <input name="stop_bang" type="number" min="0" max="8" value="{{ request.form.get('stop_bang','') }}">
-    </div>
-    <div>
-      <label>El-Ganzouri (Alganzouri)</label>
-      <input name="alganzouri" type="number" min="0" max="12" value="{{ request.form.get('alganzouri','') }}">
+      <h3>El-Ganzouri (1996)</h3>
+      {% if egri.total is not none %}
+        <p class="result-number">{{ egri.total }} / 12</p>
+        <p class="result-label">{% if egri.positive %}▲ Positivo (≥ 4){% else %}● Negativo (&lt; 4){% endif %}</p>
+      {% else %}
+        <p class="result-number">≥ {{ egri.partial }} / 12</p>
+        <p class="muted small">Incompleto: mancano {{ egri.missing|length }} item su 7.</p>
+      {% endif %}
     </div>
   </div>
+  {% if model %}
+    <p class="muted small model-note">
+      Modello <strong>{{ model.name }}</strong>: allenato su {{ model.training_data.source }}
+      ({{ model.training_data.n }} pazienti) con <strong>soli dati demografici</strong> (età, sesso, BMI, ASA, urgenza);
+      discrimina poco (AUC ≈ {{ model.validation.results["Logistica penalizzata (L2)"].metrics.auc.mean|round(2) }}).
+      Gli item delle vie aeree entrano solo nel punteggio El-Ganzouri. <a href="{{ url_for('main.analytics') }}">Dettagli</a>
+    </p>
+  {% endif %}
+  {% if saved_record_id %}<p class="ok">Caso salvato (n. {{ saved_record_id }}).</p>{% endif %}
+</section>
+{% endif %}
 
+<form method="post" novalidate>
+  {% include "_assessment_fields.html" %}
   <p>
-    <button class="btn btn-primary" type="submit" name="action" value="predict">Predict</button>
+    <button class="btn btn-primary" type="submit" name="action" value="predict">Calcola rischio</button>
     {% if current_user.is_authenticated %}
-      <button class="btn" type="submit" name="action" value="save">Predict + Save pending</button>
+      <button class="btn" type="submit" name="action" value="save">Calcola e salva caso in attesa</button>
     {% else %}
-      <span style="margin-left:8px;color:#52606d;">Login to save pending cases.</span>
+      <span class="muted">Accedi per salvare il caso.</span>
     {% endif %}
   </p>
 </form>
-
-{% if probability is not none %}
-  <div class="predict-result">
-    <h3>Logistic Regression</h3>
-    <p>Probability of difficult intubation: <strong>{{ (probability*100)|round(1) }}%</strong></p>
-    <p>Threshold: {{ threshold }}</p>
-    <p>Classification: <strong>{{ "DIFFICULT" if difficult else "NOT difficult" }}</strong></p>
-    {% if saved_record_id %}
-      <p style="margin-top:8px;color:green;">Case saved (ID #{{ saved_record_id }}).</p>
-    {% endif %}
-  </div>
-{% endif %}
-
-{% if error %}
-  <div class="flash flash-danger">{{ error }}</div>
-{% endif %}
 
 {% endblock %}

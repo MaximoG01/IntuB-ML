@@ -40,18 +40,30 @@ class IntubationRecord(db.Model):
     height = db.Column(db.Float)              # cm, può essere None
     sex = db.Column(db.String(1))             # 'M', 'F', 'O' (altro/ignoto)
 
-    dtm = db.Column(db.Float)                 # distanza tiromentale
-    dii = db.Column(db.Float)                 # distanza interincisiva
-    mallampati = db.Column(db.Integer)
+    asa = db.Column(db.Integer)               # ASA 1-5
+    emergency = db.Column(db.Boolean)         # intervento urgente
+
+    # item El-Ganzouri (app/egri.py)
+    dtm = db.Column(db.Float)                 # distanza tiromentoniera, cm
+    dii = db.Column(db.Float)                 # distanza interincisiva (apertura bocca), cm
+    mallampati = db.Column(db.Integer)        # 1-4
+    neck_movement = db.Column(db.Integer)     # 0: >90°, 1: 80-90°, 2: <80°
+    can_prognath = db.Column(db.Boolean)      # protrusione mandibolare possibile
+    history_difficult = db.Column(db.Integer) # 0 no, 1 dubbia, 2 certa
     stop_bang = db.Column(db.Integer)
-    alganzouri = db.Column(db.Integer)
+    alganzouri = db.Column(db.Integer)        # totale EGRI calcolato dagli item (non inserito a mano)
 
     drug_used = db.Column(db.String(128))     # lasciati liberi / raw
     technique = db.Column(db.String(128))
 
+    # predizione al momento dell'inserimento
+    predicted_proba = db.Column(db.Float)
+    model_version = db.Column(db.String(64))
+
     # esito – possono essere vuoti se il caso è “pending”
     success = db.Column(db.Boolean, nullable=True)
     cormack = db.Column(db.Integer, nullable=True)
+    cormack_device = db.Column(db.String(16))  # 'DL' (lama diretta) o 'VL' (videolaringoscopio)
     difficult_binary = db.Column(db.Boolean, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

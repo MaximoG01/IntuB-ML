@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -16,21 +16,18 @@
     </div>
 
     <div class="navbar-right">
+      {% set ep = request.endpoint or "" %}
+      <a class="nav-link {% if ep == 'main.predict' %}active{% endif %}" href="{{ url_for('main.predict') }}">Valuta</a>
       {% if current_user.is_authenticated %}
-        <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
-        <a class="nav-link" href="{{ url_for('main.case_list') }}">Cases</a>
-        <a class="nav-link" href="{{ url_for('main.predict') }}">Predict</a>
-        <a class="nav-link" href="{{ url_for('main.analytics') }}">Analytics</a>
-        <a class="nav-link" href="{{ url_for('main.blog') }}">Blog</a>
-        <a class="nav-link" href="{{ url_for('main.logout') }}">Logout</a>
+        <a class="nav-link {% if ep in ('main.dashboard', 'main.case_list') %}active{% endif %}" href="{{ url_for('main.dashboard') }}">I miei casi</a>
+      {% endif %}
+      <a class="nav-link {% if ep == 'main.analytics' %}active{% endif %}" href="{{ url_for('main.analytics') }}">Modello</a>
+      <a class="nav-link {% if ep.startswith('main.blog') %}active{% endif %}" href="{{ url_for('main.blog') }}">Impara</a>
+      {% if current_user.is_authenticated %}
+        <a class="nav-link" href="{{ url_for('main.logout') }}">Esci</a>
       {% else %}
-        <a class="nav-link" href="{{ url_for('main.landing') }}">Home</a>
-        <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
-        <a class="nav-link" href="{{ url_for('main.predict') }}">Predict</a>
-        <a class="nav-link" href="{{ url_for('main.analytics') }}">Analytics</a>
-        <a class="nav-link" href="{{ url_for('main.blog') }}">Blog</a>
-        <a class="nav-link" href="{{ url_for('main.login') }}">Login</a>
-        <a class="nav-link" href="{{ url_for('main.register') }}">Register</a>
+        <a class="nav-link" href="{{ url_for('main.login') }}">Accedi</a>
+        <a class="nav-link" href="{{ url_for('main.register') }}">Registrati</a>
       {% endif %}
     </div>
   </div>
@@ -49,6 +46,11 @@
 
   {% block content %}{% endblock %}
 </main>
+
+<footer class="site-footer">
+  intuB-ML · prototipo di ricerca e didattica, <strong>non è un dispositivo medico</strong> ·
+  <a href="https://github.com/MaximoG01/intuB-ML">codice</a>
+</footer>
 
 </body>
 </html>

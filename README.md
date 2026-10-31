@@ -17,12 +17,13 @@ Il progetto ha due obiettivi:
 | Parte | Stato |
 |---|---|
 | App Flask (login, inserimento casi, predizione, analytics, blog) | funziona in locale |
-| Dati | **nessun dato**: i dati sintetici sono stati abbandonati (circolari, vedi [SPEC.md](SPEC.md) §3.1). Prossima fonte: VitalDB (aperto) |
-| Modelli | regressione logistica (scikit-learn); rete "distillata" 10→16→1 (PyTorch). Si allenano solo quando ci sono abbastanza casi reali |
-| Deployment | era su Heroku (dismesso; alternative in [ARCHITECTURE.md](ARCHITECTURE.md)) |
+| Dati | **VitalDB** (aperto, 5.173 pazienti, 131 Cormack 3–4) per il modello attivo; casi raccolti dall'app. Dati sintetici abbandonati (circolari, [SPEC.md](SPEC.md) §3.1) |
+| Modello attivo | `vitaldb-demo-lr-v1`: logistica penalizzata su età, sesso, BMI, ASA, urgenza. **AUC ≈ 0,60**: senza esame delle vie aeree si prevede poco |
+| Confronto | logistica, gradient boosting e rete neurale sugli stessi fold: AUC 0,59–0,61, nessuna differenza reale |
+| El-Ganzouri | calcolato dall'app dai 7 item, mostrato accanto al modello |
+| Deployment | Heroku dismesso; alternative in [ARCHITECTURE.md](ARCHITECTURE.md) |
 
 Il database **non** è nel repo: in locale si crea vuoto con `flask db upgrade`.
-Finché non ci sono almeno 20 casi con esito, l'app permette di inserire casi ma non mostra predizioni.
 
 ## Documentazione
 
@@ -44,7 +45,18 @@ flask db upgrade
 flask run
 ```
 
-Apri http://127.0.0.1:5000. Per la rete neurale serve anche `pip install torch` (solo per l'allenamento in locale).
+Apri http://127.0.0.1:5000.
+
+### Allenare e confrontare i modelli (offline)
+
+```powershell
+pip install -r requirements-train.txt
+python -m training.run_vitaldb     # scarica VitalDB, confronta 4 modelli, esporta models/vitaldb-demo-lr-v1/
+python -m pytest                   # test
+```
+
+Il risultato va in `models/<nome>/model.json` (pesi + metriche + dati dei grafici) e
+`model_card.md`; `models/ACTIVE` dice quale modello usa l'app. Il server non allena nulla.
 
 ## Riferimento principale
 

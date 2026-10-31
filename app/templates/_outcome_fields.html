@@ -1,0 +1,31 @@
+{# Outcome after intubation, shared by case_form.html and complete_case.html #}
+{% set r = rec if rec is defined and rec else none %}
+{% set f = request.form %}
+{% set cormack_v = f.get('cormack', (r.cormack if r and r.cormack is not none else '')|string) %}
+{% set device_v = f.get('cormack_device', r.cormack_device if r and r.cormack_device else '') %}
+{% set success_v = f.get('success', ('1' if r and r.success else '0' if r and r.success is sameas false else '')) %}
+<fieldset class="form-section">
+  <legend>Esito</legend>
+  <div class="form-grid">
+    <div><label for="cormack">Cormack-Lehane</label>
+      <select name="cormack" id="cormack">
+        <option value="">— non ancora</option>
+        {% for g in ["1", "2", "3", "4"] %}
+          <option value="{{ g }}" {% if cormack_v == g %}selected{% endif %}>{{ g }}</option>
+        {% endfor %}
+      </select></div>
+    <div><label for="cormack_device">Visto con</label>
+      <select name="cormack_device" id="cormack_device">
+        <option value="">—</option>
+        <option value="DL" {% if device_v == 'DL' %}selected{% endif %}>Lama diretta (Macintosh)</option>
+        <option value="VL" {% if device_v == 'VL' %}selected{% endif %}>Videolaringoscopio</option>
+      </select></div>
+    <div><label for="success">Intubazione riuscita</label>
+      <select name="success" id="success">
+        <option value="">—</option>
+        <option value="1" {% if success_v == '1' %}selected{% endif %}>Sì</option>
+        <option value="0" {% if success_v == '0' %}selected{% endif %}>No</option>
+      </select></div>
+  </div>
+  <p class="muted">Difficile = Cormack 3 o 4. Il grado con videolaringoscopio non è confrontabile con la lama diretta: indicalo sempre.</p>
+</fieldset>

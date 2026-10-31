@@ -1,3 +1,4 @@
+import math
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -17,6 +18,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    app.jinja_env.filters["exp"] = math.exp  # odds ratios from log-odds coefficients
 
     from app import models  # noqa: F401
     from app.routes import bp as main_bp

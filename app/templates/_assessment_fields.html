@@ -1,0 +1,66 @@
+{# Pre-intubation assessment fields shared by predict.html and case_form.html.
+   Values: submitted form first, then the record being edited (rec), else empty. #}
+{% macro val(name) -%}
+  {%- if request.form.get(name) is not none -%}{{ request.form.get(name) }}
+  {%- elif rec is defined and rec and rec[name] is not none -%}
+    {%- if rec[name] is sameas true -%}1{%- elif rec[name] is sameas false -%}0{%- else -%}{{ rec[name] }}{%- endif -%}
+  {%- endif -%}
+{%- endmacro %}
+{% macro select(name, options, empty="—") -%}
+  {% set current = val(name) %}
+  <select name="{{ name }}" id="{{ name }}">
+    <option value="">{{ empty }}</option>
+    {% for value, label in options %}
+      <option value="{{ value }}" {% if current == value|string %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+{%- endmacro %}
+
+<fieldset class="form-section">
+  <legend>Paziente</legend>
+  <div class="form-grid">
+    <div><label for="age">Età (anni) *</label>
+      <input id="age" name="age" type="number" min="0" max="120" required value="{{ val('age') }}"></div>
+    <div><label for="sex">Sesso</label>
+      {{ select("sex", [("M", "Maschio"), ("F", "Femmina"), ("O", "Altro / ignoto")]) }}</div>
+    <div><label for="weight">Peso (kg) *</label>
+      <input id="weight" name="weight" type="number" step="0.1" min="1" required value="{{ val('weight') }}"></div>
+    <div><label for="height">Altezza (cm)</label>
+      <input id="height" name="height" type="number" step="0.1" min="30" value="{{ val('height') }}"></div>
+    <div><label for="asa">ASA</label>
+      {{ select("asa", [(1, "I"), (2, "II"), (3, "III"), (4, "IV"), (5, "V")]) }}</div>
+    <div><label for="emergency">Urgenza</label>
+      {{ select("emergency", [(0, "No"), (1, "Sì")]) }}</div>
+  </div>
+</fieldset>
+
+<fieldset class="form-section">
+  <legend>Vie aeree — indice di El-Ganzouri</legend>
+  <div class="form-grid">
+    <div><label for="dii">Apertura bocca, distanza interincisiva (cm)</label>
+      <input id="dii" name="dii" type="number" step="0.1" min="0" max="10" value="{{ val('dii') }}"></div>
+    <div><label for="dtm">Distanza tiromentoniera (cm)</label>
+      <input id="dtm" name="dtm" type="number" step="0.1" min="0" max="15" value="{{ val('dtm') }}"></div>
+    <div><label for="mallampati">Mallampati</label>
+      {{ select("mallampati", [(1, "I"), (2, "II"), (3, "III"), (4, "IV")]) }}</div>
+    <div><label for="neck_movement">Mobilità del collo</label>
+      {{ select("neck_movement", NECK_MOVEMENT_CHOICES.items()) }}</div>
+    <div><label for="can_prognath">Protrusione mandibolare possibile</label>
+      {{ select("can_prognath", [(1, "Sì"), (0, "No")]) }}</div>
+    <div><label for="history_difficult">Storia di intubazione difficile</label>
+      {{ select("history_difficult", [(0, "No"), (1, "Dubbia"), (2, "Certa")]) }}</div>
+  </div>
+  <p class="muted">Il punteggio El-Ganzouri (0–12) viene calcolato dagli item; il peso è quello inserito sopra.</p>
+</fieldset>
+
+<fieldset class="form-section">
+  <legend>Altro</legend>
+  <div class="form-grid">
+    <div><label for="stop_bang">STOP-BANG (0–8)</label>
+      <input id="stop_bang" name="stop_bang" type="number" min="0" max="8" value="{{ val('stop_bang') }}"></div>
+    <div><label for="drug_used">Farmaci di induzione</label>
+      <input id="drug_used" name="drug_used" type="text" value="{{ val('drug_used') }}"></div>
+    <div><label for="technique">Tecnica prevista</label>
+      <input id="technique" name="technique" type="text" value="{{ val('technique') }}"></div>
+  </div>
+</fieldset>

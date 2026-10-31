@@ -1,0 +1,6 @@
+# Offline training and tests (on top of requirements.txt). Not needed on the server.
+-r requirements.txt
+pandas
+numpy
+pytest
+# torch  # only for the experimental distilled NN in app/ml_nn.py

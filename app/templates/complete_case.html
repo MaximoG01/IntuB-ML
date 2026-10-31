@@ -1,38 +1,19 @@
 {% extends "base.html" %}
+{% block title %}Esito caso — intuB{% endblock %}
 {% block content %}
 
-<h2>Complete case #{{ rec.id }}</h2>
-
+<h2>Esito del caso n. {{ rec.id }}</h2>
 <p class="muted">
-  Enter outcome after intubation. Difficulty is computed from Cormack (>2 = difficult).
+  {{ rec.age }} anni, {{ rec.weight }} kg{% if rec.alganzouri is not none %}, El-Ganzouri {{ rec.alganzouri }}/12{% endif %}
+  {% if rec.predicted_proba is not none %} · rischio previsto {{ (rec.predicted_proba * 100)|round(1) }}% ({{ rec.model_version }}){% endif %}
 </p>
 
-<form method="post" class="form-grid">
-
-  <div>
-    <label>Success</label>
-    <select name="success">
-      <option value="">(unknown)</option>
-      <option value="1">Yes</option>
-      <option value="0">No</option>
-    </select>
-  </div>
-
-  <div>
-    <label>Cormack–Lehane (1–4)</label>
-    <select name="cormack">
-      <option value="">(not set)</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-  </div>
-
-  <div class="form-actions">
-    <button class="btn" type="submit">Save outcome</button>
-    <a class="btn btn-secondary" href="{{ url_for('main.dashboard') }}">Back</a>
-  </div>
+<form method="post" novalidate>
+  {% include "_outcome_fields.html" %}
+  <p>
+    <button class="btn btn-primary" type="submit">Salva esito</button>
+    <a class="btn" href="{{ url_for('main.dashboard') }}">Indietro</a>
+  </p>
 </form>
 
 {% endblock %}

@@ -175,10 +175,31 @@ Non funzionali:
 | 2 | ✅ 31/10/2026 — rimosso l'endpoint `/seed-db-secret-key-12345` (cancellava tutti i casi senza login) | `app/routes.py` | — |
 | 3 | ✅ 31/10/2026 — `SECRET_KEY` solo da variabile d'ambiente (altrimenti casuale) | `config.py` | — |
 | 4 | ✅ Campi vuoti non più convertiti in 0; il caso si salva anche senza modello | `app/routes.py::predict` | — |
-| 5 | Logistica riallenata a ogni predizione e a ogni apertura di Analytics | `app/routes.py` | media |
+| 5 | ✅ La predizione usa il modello esportato (`app/inference.py`); nessun training nelle route di predizione | `app/routes.py` | — |
 | 6 | ✅ Stessa soglia 0,15 per logistica e rete | `app/ml_nn.py` | — |
 | 7 | ✅ Rimosso il "loss landscape" con traiettoria (proiettava pesi della rete su componenti PCA dei dati: senza significato) | `analytics` | — |
 | 8 | ✅ Rimossi generatori sintetici e fallback; senza dati l'app lo dice | `app/ml.py` | — |
 | 9 | ✅ Rimossi script di debug/test e deploy Heroku; vecchi .md in `docs/legacy/` | radice | — |
 | 10 | ✅ Rimosso `wsl_import.sh` con **password del DB Heroku in chiaro**; storia git ripulita | radice | — |
-| 11 | `app/nn_viz.py::loss_surface_2d_safe` non più usata | `app/nn_viz.py` | bassa |
+| 11 | `app/nn_viz.py` e `app/ml_nn.py` non più usati dalle pagine (da spostare in `training/` o in "Impara") | `app/` | bassa |
+| 12 | Punti Mallampati EGRI: le fonti secondarie non concordano (I=0, II=1, III–IV=2 usato qui) → verificare sul lavoro originale | `app/egri.py` | media |
+
+## 9. Risultati — VitalDB (31/10/2026)
+
+5.173 pazienti adulti (primo intervento), 131 Cormack 3–4 (2,5%). Variabili: età, sesso, BMI, ASA, urgenza.
+CV stratificata 5 fold × 10 ripetizioni, stessa pipeline per tutti.
+
+| Modello | AUC | Pendenza calibrazione | Segnalati @15% |
+|---|---|---|---|
+| Nessun modello (prevalenza) | 0,50 | — | 0% |
+| **Logistica penalizzata (attivo)** | **0,60** (0,58–0,61) | 0,91 | 0% |
+| Gradient boosting | 0,59 (0,57–0,61) | 0,43 | 0,3% |
+| Rete neurale MLP 8 | 0,61 (0,60–0,62) | 1,05 | 0% |
+
+Conclusioni:
+- Con i soli dati demografici la discriminazione è scarsa con **qualunque** algoritmo: il limite
+  sono le variabili, non il modello. La rete neurale non aggiunge nulla di rilevante.
+- Con prevalenza 2,5% nessun paziente supera il 15%: la soglia ha senso solo con predittori forti
+  (esame delle vie aeree). Rivalutare la soglia con la decision curve quando ci saranno quei dati.
+- Odds ratio per 1 DS: età 1,25 · sesso maschile 1,24 · BMI 1,15 · ASA 0,94 · urgenza 0,94.
+- Prima prova con altezza + peso + BMI: coefficienti opposti e instabili (collinearità) → tenuto solo il BMI.

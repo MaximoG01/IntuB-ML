@@ -34,5 +34,6 @@ Leggi questo file prima di modificare il codice. Documenti di riferimento:
 venv\Scripts\activate
 $env:FLASK_APP = "wsgi.py"; flask run          # app in locale
 flask db migrate -m "descrizione"; flask db upgrade   # migrazioni
-pytest                                          # test (cartella tests/, da creare)
+python -m pytest                                # test (tests/)
+python -m training.run_vitaldb                  # confronto modelli + export in models/
 ```
