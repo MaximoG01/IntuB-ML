@@ -1,46 +1,58 @@
+# intuB-ML — Predizione della laringoscopia difficile
 
-# intuB – Prototype difficult intubation logging app
+> **Prototipo di ricerca e didattica. Non è un dispositivo medico.**
+> Non usarlo per decisioni cliniche reali. I dati attuali sono **sintetici**.
 
-**Important:** This is a research / educational prototype, not a medical device.
-Do not use it for real‑time clinical decision making.
+intuB-ML stima, prima dell'induzione, la **probabilità che la laringoscopia sia difficile**
+(Cormack-Lehane 3–4) a partire da dati di valutazione delle vie aeree raccolti al letto del paziente.
+Se la probabilità supera il **15%** il caso viene segnalato come "a rischio".
 
-## Features
+Il progetto ha due obiettivi:
+1. **Raccolta casi**: un'app web dove il clinico inserisce la valutazione pre-intubazione e, dopo, l'esito.
+2. **Modello che si aggiorna**: partire dall'indice di El-Ganzouri (pesi fissi, 1996) e arrivare a
+   pesi stimati sui dati raccolti, confrontando modelli diversi in modo corretto.
 
-- Flask web app with login / registration
-- PostgreSQL / SQLAlchemy backend (works with Heroku Postgres via `DATABASE_URL`)
-- Form for recording intubation episodes (demographics, airway scores, technique, outcome)
-- Simple logistic regression model (scikit‑learn) to correlate predictors with a binary
-  difficult / easy outcome and Cormack–Lehane grade
-- Analytics page with model metrics and coefficient bar chart (Chart.js)
-- Blog‑style background page
+## Stato attuale (31/10/2026)
 
-## Local setup
+| Parte | Stato |
+|---|---|
+| App Flask (login, inserimento casi, predizione, analytics, blog) | funziona in locale |
+| Dati | 2.000 casi **sintetici** + pochi casi di test; nessun dato reale |
+| Modelli | regressione logistica (scikit-learn); rete "distillata" 10→16→1 (PyTorch) |
+| Deployment | era su Heroku (ora da sostituire, vedi [ARCHITECTURE.md](ARCHITECTURE.md)) |
 
-```bash
+⚠️ Problemi noti più importanti (dettagli in [SPEC.md](SPEC.md)):
+- I dati sintetici sono quasi deterministici (AUC ≈ 0,999 per qualunque modello): servono solo a
+  provare il codice, **non** a dire quale modello è migliore.
+- Prevalenza sintetica 56% di casi difficili; nella realtà Cormack 3–4 è molto più raro.
+- Nessun dato reale: le metriche mostrate dall'app non dicono nulla sulle prestazioni cliniche.
+
+Il database **non** è nel repo: in locale si crea con `flask db upgrade` e si popola con uno
+script di seed (vedi SPEC §3).
+
+## Documentazione
+
+| File | Contenuto |
+|---|---|
+| [SPEC.md](SPEC.md) | cosa deve fare il sistema: esito, variabili, dati, modelli, validazione, requisiti |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | come è fatto oggi e come lo vogliamo: training offline, app online, hosting |
+| [DESIGN.md](DESIGN.md) | interfaccia: pagine, grafici, testi |
+| [AGENTS.md](AGENTS.md) | regole per chi lavora sul codice con un assistente AI (Claude Code, Codex, Copilot) |
+
+## Avvio in locale (Windows, PowerShell)
+
+```powershell
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+venv\Scripts\activate
 pip install -r requirements.txt
-
-# set up the database (SQLite by default)
-export FLASK_APP=wsgi.py
-flask db init
-flask db migrate -m "Initial tables"
+$env:FLASK_APP = "wsgi.py"
 flask db upgrade
-
 flask run
 ```
 
-## Heroku deployment (outline)
+Apri http://127.0.0.1:5000. Per la rete neurale serve anche `pip install torch` (solo per l'allenamento in locale).
 
-1. Create a GitHub repo and push this project.
-2. In Heroku, create a new app and connect it to the GitHub repo.
-3. Add the Heroku Postgres add‑on.
-4. Ensure the `DATABASE_URL` config var is set automatically by Heroku.
-5. Deploy from the main branch.
-6. Run database migrations from the Heroku dashboard (or CLI):
+## Riferimento principale
 
-```bash
-heroku run flask db upgrade
-```
-
-After that, you can register a user, start entering records, and view analytics.
+el-Ganzouri AR et al. *Preoperative airway assessment: predictive value of a multivariate risk index.*
+Anesth Analg 1996;82:1197–204. [doi:10.1097/00000539-199606000-00017](https://doi.org/10.1097/00000539-199606000-00017)
