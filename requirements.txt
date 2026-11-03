@@ -7,4 +7,4 @@ psycopg2-binary
 gunicorn
 scikit-learn
 email_validator
-waitress  # server for Windows / local network (avvia_rete_locale.ps1)
+waitress  # server for Windows / local network (start_local_network.ps1)

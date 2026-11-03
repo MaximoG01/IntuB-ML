@@ -51,18 +51,18 @@
  "C": 0.046415888336127774,
  "threshold": 0.15,
  "training_data": {
-  "source": "De Cassai et al., PLoS ONE 2019 (Padova, chirurgia tiroidea; CC-BY 4.0)",
+  "source": "De Cassai et al., PLoS ONE 2019 (Padova, thyroid surgery; CC-BY 4.0)",
   "sha256": "1aed45c4f78f66ef237f1363108d6a75d10b24313ef28f5489eb616c29f4f05a",
   "n": 500,
   "events": 48,
   "prevalence": 0.096,
-  "population": "adulti per tiroidectomia, esclusa l'intubazione difficile prevista"
+  "population": "adults scheduled for thyroidectomy, expected difficult intubation excluded"
  },
- "primary": "Logistica penalizzata (L2)",
+ "primary": "Penalized logistic (L2)",
  "validation": {
-  "method": "CV stratificata 5 fold \u00d7 20 (CV annidata per la penalizzazione)",
+  "method": "stratified 5-fold CV \u00d7 20 (nested CV for the penalty)",
   "results": {
-   "Nessun modello (prevalenza)": {
+   "No model (prevalence)": {
     "metrics": {
      "auc": {
       "mean": 0.4861725663716815,
@@ -251,7 +251,7 @@
      "hi": 0.5
     }
    },
-   "El-Ganzouri \u2265 4 (ricalibrato)": {
+   "El-Ganzouri \u2265 4 (recalibrated)": {
     "metrics": {
      "auc": {
       "mean": 0.560141270280236,
@@ -456,7 +456,7 @@
      "hi": 0.5991047008547008
     }
    },
-   "Solo Mallampati \u2265 III": {
+   "Mallampati \u2265 III only": {
     "metrics": {
      "auc": {
       "mean": 0.5958321810471976,
@@ -657,7 +657,7 @@
      "hi": 0.6380937118437118
     }
    },
-   "Logistica penalizzata (L2)": {
+   "Penalized logistic (L2)": {
     "metrics": {
      "auc": {
       "mean": 0.7311174870943954,
@@ -1505,7 +1505,7 @@
      "hi": 0.7128747252747252
     }
    },
-   "Rete neurale (MLP 8)": {
+   "Neural network (MLP 8)": {
     "metrics": {
      "auc": {
       "mean": 0.6783589140855457,
@@ -2088,43 +2088,43 @@
   "tool": "PROBAST (Wolff et al., Ann Intern Med 2019)",
   "domains": [
    {
-    "domain": "1. Partecipanti",
-    "risk": "alto",
-    "applicability": "alta",
-    "why": "Esclusi per protocollo i pazienti con intubazione difficile prevista: mancano proprio i casi pi\u00f9 evidenti, e la capacit\u00e0 dei predittori di distinguere \u00e8 distorta (bias di spettro).",
-    "applicability_why": "Solo chirurgia tiroidea (77% donne, un quarto con gozzo voluminoso), un centro."
+    "domain": "1. Participants",
+    "risk": "high",
+    "applicability": "high",
+    "why": "Patients with an expected difficult intubation were excluded by protocol: the most obvious cases are missing, and the ability of the predictors to discriminate is distorted (spectrum bias).",
+    "applicability_why": "Thyroid surgery only (77% women, a quarter with a large goitre), one centre."
    },
    {
-    "domain": "2. Predittori",
-    "risk": "basso",
-    "applicability": "bassa",
-    "why": "Misurati alla visita anestesiologica, prima dell'intubazione, con definizioni standard.",
-    "applicability_why": "Sono quasi tutti gli item di El-Ganzouri, gli stessi del form dell'app."
+    "domain": "2. Predictors",
+    "risk": "low",
+    "applicability": "low",
+    "why": "Measured at the anaesthesia visit, before intubation, with standard definitions.",
+    "applicability_why": "Almost all the El-Ganzouri items, the same as in the app's form."
    },
    {
-    "domain": "3. Esito",
-    "risk": "incerto",
-    "applicability": "bassa",
-    "why": "Cormack con lama curva convenzionale, definizione standard; chi intuba probabilmente conosce la valutazione pre-operatoria (non in cieco).",
-    "applicability_why": "\u00c8 esattamente l'esito del progetto (laringoscopia diretta, Cormack 3\u20134)."
+    "domain": "3. Outcome",
+    "risk": "unclear",
+    "applicability": "low",
+    "why": "Cormack with a conventional curved blade, standard definition; the intubating clinician probably knows the pre-operative assessment (not blinded).",
+    "applicability_why": "Exactly the project's outcome (direct laryngoscopy, Cormack 3\u20134)."
    },
    {
-    "domain": "4. Analisi",
-    "risk": "alto",
+    "domain": "4. Analysis",
+    "risk": "high",
     "applicability": null,
-    "why": "48 eventi per 7 predittori (circa 7 per predittore), sotto la numerosit\u00e0 di Riley; Mallampati, collo e storia arrivano gi\u00e0 tagliati in s\u00ec/no. A favore: predittori pre-specificati, nessun mancante, penalizzazione, calibrazione e ottimismo misurati.",
+    "why": "48 events for 7 predictors (about 7 per predictor), below Riley's sample size; Mallampati, neck and history arrive already cut into yes/no. In favour: pre-specified predictors, no missing values, penalization, calibration and optimism measured.",
     "applicability_why": null
    }
   ],
   "overall": {
-   "risk": "alto",
-   "applicability": "alta"
+   "risk": "high",
+   "applicability": "high"
   }
  },
  "limitations": [
-  "48 eventi: stime ancora instabili; numerosit\u00e0 sotto i criteri di Riley.",
-  "Solo chirurgia tiroidea, un centro; esclusi i pazienti con intubazione difficile prevista.",
-  "Mallampati, mobilit\u00e0 del collo e storia di intubazione difficile disponibili solo come s\u00ec/no.",
-  "Rischio di bias complessivo alto (PROBAST). Non validato esternamente. **Non usare per decisioni cliniche.**"
+  "48 events: estimates still unstable; sample size below Riley's criteria.",
+  "Thyroid surgery only, one centre; patients with an expected difficult intubation excluded.",
+  "Mallampati, neck movement and history of difficult intubation available only as yes/no.",
+  "Overall risk of bias high (PROBAST). Not externally validated. **Do not use for clinical decisions.**"
  ]
 }

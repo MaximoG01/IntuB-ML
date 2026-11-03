@@ -124,7 +124,7 @@ def register():
     invite = current_app.config.get("INVITE_CODE")
     if form.validate_on_submit():
         if invite and not hmac.compare_digest((form.invite_code.data or "").strip(), invite):
-            form.invite_code.errors.append("Codice invito non valido: chiedilo a chi gestisce l'app.")
+            form.invite_code.errors.append("Invalid invite code: ask whoever runs the app.")
             return render_template("register.html", form=form, invite_required=True)
         if User.query.filter_by(email=form.email.data).first():
             form.email.errors.append("Email already registered.")
@@ -159,7 +159,7 @@ def predict():
             data = _assessment_from_form(request.form)
             custom = _custom_from_form(request.form)
         except ValueError as e:
-            err = str(e) if isinstance(e, FormError) else "Valori non validi: usa numeri o lascia vuoto."
+            err = str(e) if isinstance(e, FormError) else "Invalid values: use numbers or leave the field empty."
             data = None
 
         if data is not None:
@@ -173,7 +173,7 @@ def predict():
 
             if request.form.get("action") == "save":
                 if not current_user.is_authenticated:
-                    flash("Accedi per salvare il caso.", "warning")
+                    flash("Log in to save the case.", "warning")
                 else:
                     # Pending case: outcome stays NULL until completed after intubation
                     rec = IntubationRecord(
@@ -186,7 +186,7 @@ def predict():
                     db.session.add(rec)
                     db.session.commit()
                     saved_record_id = rec.id
-                    flash("Caso salvato in attesa di esito: completalo dopo l'intubazione.", "success")
+                    flash("Case saved as pending: add the outcome after intubation.", "success")
 
     return render_template(
         "predict.html",
@@ -213,7 +213,7 @@ def complete_case(record_id: int):
     if request.method == "POST":
         _apply_outcome(rec, request.form)
         db.session.commit()
-        flash("Esito registrato.", "success")
+        flash("Outcome saved.", "success")
         return redirect(url_for("main.dashboard"))
 
     return render_template("complete_case.html", rec=rec)
@@ -248,7 +248,7 @@ def _assessment_from_form(form) -> dict:
     """Pre-intubation fields shared by predict, new and edit. Raises ValueError if invalid."""
     age, weight = _int_or_none(form.get("age")), _float_or_none(form.get("weight"))
     if age is None or weight is None:
-        raise FormError("Età e peso sono obbligatori.")
+        raise FormError("Age and weight are required.")
     data = dict(
         age=age,
         weight=weight,
@@ -278,7 +278,7 @@ def _custom_from_form(form) -> dict:
         try:
             values[field] = field.parse(form.get(f"cf_{field.id}"))
         except ValueError as e:
-            errors.append(str(e) if field.label in str(e) else f"{field.label}: valore non valido.")
+            errors.append(str(e) if field.label in str(e) else f"{field.label}: invalid value.")
     if errors:
         raise FormError(" ".join(errors))
     return values
@@ -315,12 +315,12 @@ def new_case():
             rec = IntubationRecord(operator_id=current_user.id, **_assessment_from_form(request.form))
             _store_custom(rec, _custom_from_form(request.form))
         except ValueError as e:
-            flash(str(e) if isinstance(e, FormError) else "Valori non validi: usa numeri o lascia vuoto.", "danger")
+            flash(str(e) if isinstance(e, FormError) else "Invalid values: use numbers or leave the field empty.", "danger")
             return render_template("case_form.html", rec=None)
         _apply_outcome(rec, request.form)
         db.session.add(rec)
         db.session.commit()
-        flash("Caso salvato.", "success")
+        flash("Case saved.", "success")
         return redirect(url_for("main.dashboard"))
 
     return render_template("case_form.html", rec=None)
@@ -338,14 +338,14 @@ def edit_case(record_id: int):
             data = _assessment_from_form(request.form)
             custom = _custom_from_form(request.form)
         except ValueError as e:
-            flash(str(e) if isinstance(e, FormError) else "Valori non validi: usa numeri o lascia vuoto.", "danger")
+            flash(str(e) if isinstance(e, FormError) else "Invalid values: use numbers or leave the field empty.", "danger")
             return render_template("case_form.html", rec=rec)
         for k, v in data.items():
             setattr(rec, k, v)
         _store_custom(rec, custom)
         _apply_outcome(rec, request.form)
         db.session.commit()
-        flash("Caso aggiornato.", "success")
+        flash("Case updated.", "success")
         return redirect(url_for("main.dashboard"))
 
     return render_template("case_form.html", rec=rec)
@@ -384,14 +384,14 @@ def _inject_choices():
 
 
 # ------------------------------------------------------
-# VARIABILI AGGIUNTIVE (admin) e EXPORT per l'allenamento offline
+# EXTRA VARIABLES (admin) and EXPORT for offline training
 # ------------------------------------------------------
 def _require_admin() -> None:
     if not current_user.is_authenticated or not current_user.is_admin:
         abort(403)
 
 
-@bp.route("/variabili", methods=["GET", "POST"])
+@bp.route("/variables", methods=["GET", "POST"])
 @login_required
 def custom_fields():
     form = CustomFieldForm()
@@ -399,7 +399,7 @@ def custom_fields():
         _require_admin()
         if form.validate_on_submit():
             if CustomField.query.filter_by(key=form.key.data).first():
-                form.key.errors.append("Esiste già una variabile con questo nome breve.")
+                form.key.errors.append("A variable with this short name already exists.")
             else:
                 field = CustomField(created_by_id=current_user.id)
                 form.populate_obj(field)
@@ -409,7 +409,7 @@ def custom_fields():
                     field.choices = None
                 db.session.add(field)
                 db.session.commit()
-                flash(f'Variabile "{field.label}" aggiunta: compare ora nel form Valuta.', "success")
+                flash(f'Variable "{field.label}" added: it now appears in the Assess form.', "success")
                 return redirect(url_for("main.custom_fields"))
     fields = CustomField.query.order_by(CustomField.id).all()
     counts = dict(db.session.query(CustomValue.field_id, db.func.count(CustomValue.id))
@@ -417,7 +417,7 @@ def custom_fields():
     return render_template("custom_fields.html", form=form, fields=fields, counts=counts, toggle=ToggleForm())
 
 
-@bp.route("/variabili/<int:field_id>/attiva", methods=["POST"])
+@bp.route("/variables/<int:field_id>/toggle", methods=["POST"])
 @login_required
 def toggle_custom_field(field_id: int):
     _require_admin()
@@ -426,8 +426,8 @@ def toggle_custom_field(field_id: int):
     field = db.session.get(CustomField, field_id) or abort(404)
     field.active = not field.active  # never deleted: values already collected stay in the database
     db.session.commit()
-    state = "riattivata" if field.active else "disattivata"
-    flash(f'Variabile "{field.label}" {state}.', "success")
+    state = "reactivated" if field.active else "deactivated"
+    flash(f'Variable "{field.label}" {state}.', "success")
     return redirect(url_for("main.custom_fields"))
 
 
@@ -452,27 +452,27 @@ def export_csv():
         row += ["" if extra.get(f.id) is None else extra[f.id] for f in fields]  # empty = missing, never 0
         w.writerow(row)
     return Response(out.getvalue(), mimetype="text/csv",
-                    headers={"Content-Disposition": "attachment; filename=intub-casi.csv"})
+                    headers={"Content-Disposition": "attachment; filename=intub-cases.csv"})
 
 
 # ------------------------------------------------------
-# IMPARA (ex blog): one template per post in templates/learn/
+# LEARN (ex blog): one template per post in templates/learn/
 # ------------------------------------------------------
 LEARN_POSTS = [
-    {"slug": "laringoscopia-difficile", "title": "Laringoscopia difficile: Cormack, Mallampati, El-Ganzouri",
-     "subtitle": "Che cosa vogliamo prevedere, con quali segni clinici, e perché lo strumento cambia l'esito."},
-    {"slug": "valutare-un-modello", "title": "Come si valuta un modello di rischio",
-     "subtitle": "AUC, calibrazione, soglia del 15% e decision curve, con i numeri del nostro studio."},
-    {"slug": "bias-probast", "title": "Il rischio di bias: PROBAST applicato al nostro studio",
-     "subtitle": "Quattro domini per decidere quanto fidarsi di un modello di predizione."},
-    {"slug": "discesa-del-gradiente", "title": "Come impara una logistica: la discesa del gradiente",
-     "subtitle": "La superficie di errore vera, calcolata su pazienti reali, e il percorso passo per passo."},
-    {"slug": "overfitting", "title": "Rete neurale e overfitting",
-     "subtitle": "Perché con pochi eventi una rete impara a memoria, e come lo si vede."},
-    {"slug": "studio-obesi", "title": "Lo studio sugli obesi: cosa abbiamo trovato",
-     "subtitle": "Protocollo, risultati e perché un risultato negativo è comunque un risultato."},
-    {"slug": "studio-tiroide", "title": "Lo studio sulla chirurgia tiroidea (Padova)",
-     "subtitle": "500 pazienti con gli item di El-Ganzouri: il modello batte la regola del 1996?"},
+    {"slug": "difficult-laryngoscopy", "title": "Difficult laryngoscopy: Cormack, Mallampati, El-Ganzouri",
+     "subtitle": "What we want to predict, with which bedside signs, and why the device changes the outcome."},
+    {"slug": "evaluating-a-model", "title": "How to evaluate a risk model",
+     "subtitle": "AUC, calibration, the 15% threshold and decision curves, with the numbers from our studies."},
+    {"slug": "bias-probast", "title": "Risk of bias: PROBAST applied to our studies",
+     "subtitle": "Four domains to decide how far to trust a prediction model."},
+    {"slug": "gradient-descent", "title": "How a logistic regression learns: gradient descent",
+     "subtitle": "The real error surface, computed on real patients, and the path step by step."},
+    {"slug": "overfitting", "title": "Neural networks and overfitting",
+     "subtitle": "Why with few events a network learns by heart, and how to see it."},
+    {"slug": "obese-study", "title": "The obese-patient study: what we found",
+     "subtitle": "Protocol, results, and why a negative result is still a result."},
+    {"slug": "thyroid-study", "title": "The thyroid-surgery study (Padova)",
+     "subtitle": "500 patients with the El-Ganzouri items: does the model beat the 1996 rule?"},
 ]
 
 

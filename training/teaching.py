@@ -38,7 +38,7 @@ def neural_net_curves(X: np.ndarray, y: np.ndarray, inputs, seed=42, epochs=400)
     prep = Pipeline([("impute", SimpleImputer(strategy="median")), ("scale", StandardScaler())]).fit(Xtr)
     Xtr, Xva = prep.transform(Xtr), prep.transform(Xva)
     curves = {}
-    for label, alpha in (("senza regolarizzazione", 1e-4), ("con regolarizzazione", 3.0)):
+    for label, alpha in (("without regularization", 1e-4), ("with regularization", 3.0)):
         net = MLPClassifier(hidden_layer_sizes=(8,), alpha=alpha, learning_rate_init=0.01, random_state=seed)
         tr, va = [], []
         for _ in range(epochs):

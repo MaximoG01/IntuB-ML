@@ -17,40 +17,40 @@
 {%- endmacro %}
 
 <fieldset class="form-section">
-  <legend>Paziente</legend>
+  <legend>Patient</legend>
   <div class="form-grid">
-    <div><label for="age">Età (anni) *</label>
+    <div><label for="age">Age (years) *</label>
       <input id="age" name="age" type="number" min="0" max="120" required value="{{ val('age') }}"></div>
-    <div><label for="sex">Sesso</label>
-      {{ select("sex", [("M", "Maschio"), ("F", "Femmina"), ("O", "Altro / ignoto")]) }}</div>
-    <div><label for="weight">Peso (kg) *</label>
+    <div><label for="sex">Sex</label>
+      {{ select("sex", [("M", "Male"), ("F", "Female"), ("O", "Other / unknown")]) }}</div>
+    <div><label for="weight">Weight (kg) *</label>
       <input id="weight" name="weight" type="number" step="0.1" min="1" required value="{{ val('weight') }}"></div>
-    <div><label for="height">Altezza (cm)</label>
+    <div><label for="height">Height (cm)</label>
       <input id="height" name="height" type="number" step="0.1" min="30" value="{{ val('height') }}"></div>
     <div><label for="asa">ASA</label>
       {{ select("asa", [(1, "I"), (2, "II"), (3, "III"), (4, "IV"), (5, "V")]) }}</div>
-    <div><label for="emergency">Urgenza</label>
-      {{ select("emergency", [(0, "No"), (1, "Sì")]) }}</div>
+    <div><label for="emergency">Emergency</label>
+      {{ select("emergency", [(0, "No"), (1, "Yes")]) }}</div>
   </div>
 </fieldset>
 
 <fieldset class="form-section">
-  <legend>Vie aeree — indice di El-Ganzouri</legend>
+  <legend>Airway — El-Ganzouri index</legend>
   <div class="form-grid">
-    <div><label for="dii">Apertura bocca, distanza interincisiva (cm)</label>
+    <div><label for="dii">Mouth opening, interincisor distance (cm)</label>
       <input id="dii" name="dii" type="number" step="0.1" min="0" max="10" value="{{ val('dii') }}"></div>
-    <div><label for="dtm">Distanza tiromentoniera (cm)</label>
+    <div><label for="dtm">Thyromental distance (cm)</label>
       <input id="dtm" name="dtm" type="number" step="0.1" min="0" max="15" value="{{ val('dtm') }}"></div>
     <div><label for="mallampati">Mallampati</label>
       {{ select("mallampati", [(1, "I"), (2, "II"), (3, "III"), (4, "IV")]) }}</div>
-    <div><label for="neck_movement">Mobilità del collo</label>
+    <div><label for="neck_movement">Neck movement</label>
       {{ select("neck_movement", NECK_MOVEMENT_CHOICES.items()) }}</div>
-    <div><label for="can_prognath">Protrusione mandibolare possibile</label>
-      {{ select("can_prognath", [(1, "Sì"), (0, "No")]) }}</div>
-    <div><label for="history_difficult">Storia di intubazione difficile</label>
-      {{ select("history_difficult", [(0, "No"), (1, "Dubbia"), (2, "Certa")]) }}</div>
+    <div><label for="can_prognath">Can protrude the jaw</label>
+      {{ select("can_prognath", [(1, "Yes"), (0, "No")]) }}</div>
+    <div><label for="history_difficult">History of difficult intubation</label>
+      {{ select("history_difficult", [(0, "No"), (1, "Questionable"), (2, "Definite")]) }}</div>
   </div>
-  <p class="muted">Il punteggio El-Ganzouri (0–12) viene calcolato dagli item; il peso è quello inserito sopra.</p>
+  <p class="muted">The El-Ganzouri score (0–12) is computed from the items; weight is the one entered above.</p>
 </fieldset>
 
 {% set extra_fields = custom_fields() %}
@@ -58,7 +58,7 @@
 {% set saved = {} %}
 {% if rec is defined and rec %}{% for cv in rec.custom_values %}{% set _ = saved.update({cv.field_id: cv.value}) %}{% endfor %}{% endif %}
 <fieldset class="form-section">
-  <legend>Variabili aggiuntive</legend>
+  <legend>Extra variables</legend>
   <div class="form-grid">
     {% for f in extra_fields %}
       {% set name = "cf_" ~ f.id %}
@@ -79,18 +79,18 @@
       </div>
     {% endfor %}
   </div>
-  <p class="muted small">Variabili raccolte per studi futuri: non entrano nel calcolo del rischio finché non c'è un modello allenato anche su di esse.</p>
+  <p class="muted small">Variables collected for future studies: they do not enter the risk until a model is trained on them.</p>
 </fieldset>
 {% endif %}
 
 <fieldset class="form-section">
-  <legend>Altro</legend>
+  <legend>Other</legend>
   <div class="form-grid">
     <div><label for="stop_bang">STOP-BANG (0–8)</label>
       <input id="stop_bang" name="stop_bang" type="number" min="0" max="8" value="{{ val('stop_bang') }}"></div>
-    <div><label for="drug_used">Farmaci di induzione</label>
+    <div><label for="drug_used">Induction drugs</label>
       <input id="drug_used" name="drug_used" type="text" value="{{ val('drug_used') }}"></div>
-    <div><label for="technique">Tecnica prevista</label>
+    <div><label for="technique">Planned technique</label>
       <input id="technique" name="technique" type="text" value="{{ val('technique') }}"></div>
   </div>
 </fieldset>

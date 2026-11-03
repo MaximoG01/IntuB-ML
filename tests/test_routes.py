@@ -31,12 +31,12 @@ def test_predict_shows_model_and_egri(client):
     body = client.post("/predict", data=ASSESSMENT).get_data(as_text=True)
     # 1 (mouth) + 2 (TMD) + 2 (Mallampati III) + 1 (neck) + 1 (prognath) + 1 (weight) + 0 = 8
     assert "8 / 12" in body
-    assert "Modello statistico" in body
+    assert "Statistical model" in body
 
 
 def test_predict_requires_age_and_weight(client):
     body = client.post("/predict", data={"age": "", "weight": ""}).get_data(as_text=True)
-    assert "obbligatori" in body
+    assert "Age and weight are required." in body
 
 
 def test_save_pending_then_complete(app, logged_in):

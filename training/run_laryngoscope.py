@@ -25,12 +25,25 @@ MODEL_NAME = "laryngoscope-lr-v1"
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
 N_REPEATS = 20
 LABELS = {
-    "null": "Nessun modello (prevalenza)",
-    "mallampati": "Solo Mallampati",
-    "lr": "Logistica penalizzata (L2)",
+    "null": "No model (prevalence)",
+    "mallampati": "Mallampati only",
+    "lr": "Penalized logistic (L2)",
     "hgb": "Gradient boosting",
-    "mlp": "Rete neurale (MLP 8)",
+    "mlp": "Neural network (MLP 8)",
 }
+POPULATION = "obese adults (BMI 30–50), elective surgery"
+METHOD = f"stratified 5-fold CV × {N_REPEATS} (nested CV for the penalty)"
+
+
+def limitations(events: int) -> list:
+    return [
+        f"Only {events} events: unstable estimates, wide confidence intervals.",
+        "Only obese patients in elective surgery, one centre: not transferable to other populations without validation.",
+        "The only airway examination available is Mallampati. El-Ganzouri cannot be computed.",
+        "Half of the Cormack grades were obtained with a video laryngoscope: the model uses the device as a "
+        "predictor; in the app it is fixed to a Macintosh blade.",
+        "Overall risk of bias high (PROBAST). Not externally validated. **Do not use for clinical decisions.**",
+    ]
 PRIMARY = LABELS["lr"]
 
 
@@ -88,26 +101,27 @@ def external_vitaldb(df):
 
 
 PROBAST = [
-    {"domain": "1. Partecipanti", "risk": "incerto", "applicability": "alta",
-     "why": "Dati di un RCT (fonte accettabile), ma criteri di esclusione da verificare sull'articolo "
-            "originale: se escludeva vie aeree difficili note, la prevalenza è distorta.",
-     "applicability_why": "Solo obesi (BMI 30–50), chirurgia elettiva, un centro: non rappresenta la "
-                          "popolazione generale della domanda (§1)."},
-    {"domain": "2. Predittori", "risk": "basso", "applicability": "alta",
-     "why": "Predittori misurati prima della laringoscopia, definizioni standard, scelti prima dell'analisi.",
-     "applicability_why": "Manca quasi tutto l'El-Ganzouri (DTM, apertura bocca, collo, prognatismo, "
-                          "storia): c'è solo il Mallampati."},
-    {"domain": "3. Esito", "risk": "alto", "applicability": "alta",
-     "why": "Cormack dato da chi intuba, che conosce il Mallampati (non in cieco); metà dei pazienti "
-            "valutata con videolaringoscopio, che migliora la visione: l'esito non è uguale per tutti.",
-     "applicability_why": "La domanda è la laringoscopia diretta; qui l'esito è solo binario (1–2 vs 3–4)."},
-    {"domain": "4. Analisi", "risk": "alto", "applicability": None,
-     "why": "18 eventi per 5 predittori (3,6 eventi per predittore), molto sotto la numerosità minima di "
-            "Riley. A favore: predittori pre-specificati, niente selezione univariata, mancanti imputati "
-            "dentro i fold, penalizzazione, calibrazione e ottimismo misurati.",
+    {"domain": "1. Participants", "risk": "unclear", "applicability": "high",
+     "why": "RCT data (an acceptable source), but the exclusion criteria must be checked in the original "
+            "paper: if known difficult airways were excluded, the prevalence is distorted.",
+     "applicability_why": "Only obese patients (BMI 30–50), elective surgery, one centre: not the general "
+                          "population of our question (§1)."},
+    {"domain": "2. Predictors", "risk": "low", "applicability": "high",
+     "why": "Predictors measured before laryngoscopy, standard definitions, chosen before the analysis.",
+     "applicability_why": "Almost all of El-Ganzouri is missing (TMD, mouth opening, neck, jaw protrusion, "
+                          "history): only Mallampati is available."},
+    {"domain": "3. Outcome", "risk": "high", "applicability": "high",
+     "why": "Cormack graded by the intubating clinician, who knows the Mallampati (not blinded); half of "
+            "the patients assessed with a video laryngoscope, which improves the view: the outcome is not "
+            "the same for everyone.",
+     "applicability_why": "Our question is direct laryngoscopy; here the outcome is only binary (1–2 vs 3–4)."},
+    {"domain": "4. Analysis", "risk": "high", "applicability": None,
+     "why": "18 events for 5 predictors (3.6 events per predictor), far below Riley's minimum sample size. "
+            "In favour: pre-specified predictors, no univariable selection, missing values imputed within "
+            "the folds, penalization, calibration and optimism measured.",
      "applicability_why": None},
 ]
-PROBAST_OVERALL = {"risk": "alto", "applicability": "alta"}
+PROBAST_OVERALL = {"risk": "high", "applicability": "high"}
 
 
 def fmt_ci(d, pct=False):
@@ -119,21 +133,20 @@ def model_card(model: dict) -> str:
     d, v = model["training_data"], model["validation"]
     lines = [
         f"# Model card — {model['name']}", "",
-        f"Creato: {model['created']} · tipo: regressione logistica penalizzata (L2, C={model['C']:.3g}) · "
-        "protocollo: SPEC §10", "",
-        "## Dati",
+        f"Created: {model['created']} · type: penalized logistic regression (L2, C={model['C']:.3g}) · "
+        "protocol: SPEC §10", "",
+        "## Data",
         f"- {d['source']}, commit `{d['commit'][:7]}`, sha256 `{d['sha256'][:12]}…`.",
-        f"- {d['n']} adulti obesi, chirurgia elettiva; {d['events']} con Cormack 3–4 ({d['prevalence'] * 100:.1f}%).",
-        "- Esito: `view == 0` (la documentazione del pacchetto ha la codifica invertita; vedi SPEC §10).",
-        f"- Predittori: {', '.join(model['features'])}. Nell'app il videolaringoscopio è fissato a 0 "
-        "(predizione per lama Macintosh).", "",
-        f"## Validazione interna (CV stratificata 5 fold × {N_REPEATS} ripetizioni)",
-        "Media e intervallo 2,5–97,5% tra le ripetizioni (variabilità della CV, **non** un IC). "
-        "AUC calcolata dentro ogni fold: sulle predizioni out-of-fold riunite, con pochi eventi, "
-        "i modelli deboli scendono artificialmente sotto 0,5 (il modello nullo dava 0,31). Per lo stesso "
-        "motivo la pendenza di calibrazione della CV è falsata per i modelli quasi costanti: per la "
-        "calibrazione vale il bootstrap qui sotto.", "",
-        "| Modello | AUC per fold | Brier | Pendenza calibr. | Sens. @15% | Spec. @15% | Segnalati @15% |",
+        f"- {d['n']} obese adults, elective surgery; {d['events']} with Cormack 3–4 ({d['prevalence'] * 100:.1f}%).",
+        "- Outcome: `view == 0` (the package documentation has the coding inverted; see SPEC §10).",
+        f"- Predictors: {', '.join(model['features'])}. In the app the video laryngoscope is fixed to 0 "
+        "(prediction for a Macintosh blade).", "",
+        f"## Internal validation (stratified 5-fold CV × {N_REPEATS} repeats)",
+        "Mean and 2.5–97.5% range across repeats (CV variability, **not** a CI). "
+        "AUC computed within each fold: on pooled out-of-fold predictions, with few events, weak models "
+        "fall artificially below 0.5 (the null model gave 0.31). For the same reason the CV calibration "
+        "slope is distorted for near-constant models: for calibration use the bootstrap below.", "",
+        "| Model | AUC per fold | Brier | Calibr. slope | Sens. @15% | Spec. @15% | Flagged @15% |",
         "|---|---|---|---|---|---|---|",
     ]
     for name, r in v["results"].items():
@@ -141,45 +154,57 @@ def model_card(model: dict) -> str:
         lines.append(f"| {name} | {fmt_ci(r['auc_fold'])} | {fmt_ci(m['brier'])} | "
                      f"{fmt_ci(m['cal_slope'])} | {fmt_ci(m['sensitivity'], True)} | "
                      f"{fmt_ci(m['specificity'], True)} | {fmt_ci(m['flagged'], True)} |")
-    lines += ["", "## Ottimismo (bootstrap di Harrell)", "",
-              "| Modello | Metrica | Apparente | Ottimismo | Corretto |", "|---|---|---|---|---|"]
-    for title, o in (("Logistica penalizzata (principale)", v["optimism"]),
-                     ("Logistica senza penalizzazione", v["optimism_unpenalized"])):
-        lines += [f"| {title} | {k} | {o[k]['apparent']:.3f} | {o[k]['optimism']:.3f} | {o[k]['corrected']:.3f} |"
-                  for k in ("auc", "brier", "cal_slope")]
+    lines += optimism_table(v)
     lines += [
         "",
-        "La pendenza corretta del modello penalizzato non è interpretabile: le sue predizioni sono quasi "
-        "costanti, e una piccola differenza tra pazienti produce una pendenza grande. Il modello senza "
-        "penalizzazione mostra invece l'overfitting tipico: pendenza corretta molto sotto 1.",
-        "", "## Coefficienti (odds ratio per 1 deviazione standard, IC 95% bootstrap)", "",
-        *[f"- {inference.FEATURE_LABELS[f]}: OR {np.exp(model['coef'][f]):.2f} "
-          f"({np.exp(model['coef_ci'][f]['lo']):.2f}–{np.exp(model['coef_ci'][f]['hi']):.2f})"
-          for f in model["features"]],
+        "The corrected slope of the penalized model cannot be interpreted: its predictions are almost "
+        "constant, and a small difference between patients produces a large slope. The unpenalized model "
+        "shows typical overfitting instead: corrected slope well below 1.",
+        *coefficient_lines(model),
     ]
     s, e, n = v["sensitivity_macintosh"], v["external_vitaldb"], v["sample_size"]
     lines += [
-        "", "## Analisi secondarie",
-        f"- **Sola lama Macintosh** (n = {s['n']}, {s['events']} eventi): AUC per fold {fmt_ci(s['auc_fold'])}.",
-        f"- **Modello VitalDB su questi pazienti**: AUC {e['auc_ci']['auc']:.3f} "
-        f"({e['auc_ci']['lo']:.3f}–{e['auc_ci']['hi']:.3f}); rischio medio previsto "
-        f"{e['mean_predicted'] * 100:.1f}% contro {e['observed'] * 100:.1f}% osservato; segnalati @15% "
+        "", "## Secondary analyses",
+        f"- **Macintosh blade only** (n = {s['n']}, {s['events']} events): AUC per fold {fmt_ci(s['auc_fold'])}.",
+        f"- **VitalDB model on these patients**: AUC {e['auc_ci']['auc']:.3f} "
+        f"({e['auc_ci']['lo']:.3f}–{e['auc_ci']['hi']:.3f}); mean predicted risk "
+        f"{e['mean_predicted'] * 100:.1f}% vs {e['observed'] * 100:.1f}% observed; flagged @15% "
         f"{e['flagged'] * 100:.1f}%.",
-        f"- **Numerosità minima (Riley 2020)** con {len(model['features'])} predittori e prevalenza "
-        f"{d['prevalence'] * 100:.0f}%: {n['n_required']} pazienti ({n['events_required']} eventi); "
-        f"disponibili {d['n']} ({d['events']}).",
-        "", "## Rischio di bias (PROBAST)", "",
-        "| Dominio | Rischio di bias | Perché | Applicabilità (preoccupazione) | Perché |",
-        "|---|---|---|---|---|",
-        *[f"| {p['domain']} | {p['risk']} | {p['why']} | {p['applicability'] or '—'} | "
-          f"{p['applicability_why'] or '—'} |" for p in model["probast"]["domains"]],
-        f"| **Complessivo** | **{model['probast']['overall']['risk']}** | | "
-        f"**{model['probast']['overall']['applicability']}** | |",
-        "", "## Limiti", *[f"- {x}" for x in model["limitations"]], "",
-        "Fonte: Abdallah et al., Anesth Analg 2011;113:1082-7; Nowacki AS, TSHS Resources Portal 2017; "
-        "pacchetto R medicaldata (MIT).",
+        f"- **Minimum sample size (Riley 2020)** with {len(model['features'])} predictors and prevalence "
+        f"{d['prevalence'] * 100:.0f}%: {n['n_required']} patients ({n['events_required']} events); "
+        f"available {d['n']} ({d['events']}).",
+        *probast_and_limitations(model),
+        "Source: Abdallah et al., Anesth Analg 2011;113:1082-7; Nowacki AS, TSHS Resources Portal 2017; "
+        "R package medicaldata (MIT).",
     ]
     return "\n".join(lines) + "\n"
+
+
+def optimism_table(v: dict) -> list:
+    lines = ["", "## Optimism (Harrell's bootstrap)", "",
+             "| Model | Metric | Apparent | Optimism | Corrected |", "|---|---|---|---|---|"]
+    for title, o in (("Penalized logistic (primary)", v["optimism"]),
+                     ("Unpenalized logistic", v["optimism_unpenalized"])):
+        lines += [f"| {title} | {k} | {o[k]['apparent']:.3f} | {o[k]['optimism']:.3f} | {o[k]['corrected']:.3f} |"
+                  for k in ("auc", "brier", "cal_slope")]
+    return lines
+
+
+def coefficient_lines(model: dict) -> list:
+    return ["", "## Coefficients (odds ratio per 1 standard deviation, bootstrap 95% CI)", "",
+            *[f"- {inference.FEATURE_LABELS[f]}: OR {np.exp(model['coef'][f]):.2f} "
+              f"({np.exp(model['coef_ci'][f]['lo']):.2f}–{np.exp(model['coef_ci'][f]['hi']):.2f})"
+              for f in model["features"]]]
+
+
+def probast_and_limitations(model: dict) -> list:
+    pb = model["probast"]
+    return ["", "## Risk of bias (PROBAST)", "",
+            "| Domain | Risk of bias | Why | Applicability (concern) | Why |", "|---|---|---|---|---|",
+            *[f"| {p['domain']} | {p['risk']} | {p['why']} | {p['applicability'] or '—'} | "
+              f"{p['applicability_why'] or '—'} |" for p in pb["domains"]],
+            f"| **Overall** | **{pb['overall']['risk']}** | | **{pb['overall']['applicability']}** | |",
+            "", "## Limitations", *[f"- {x}" for x in model["limitations"]], ""]
 
 
 def main():
@@ -218,10 +243,10 @@ def main():
     info = {
         "training_data": {"source": laryngoscope.SOURCE, "commit": laryngoscope.COMMIT,
                           "sha256": laryngoscope.sha256(), "n": int(len(y)), "events": int(y.sum()),
-                          "prevalence": float(y.mean()), "population": "adulti obesi (BMI 30–50), chirurgia elettiva"},
+                          "prevalence": float(y.mean()), "population": POPULATION},
         "fixed": {"video_laryngoscope": 0.0},
         "primary": PRIMARY,
-        "validation": {"method": f"CV stratificata 5 fold × {N_REPEATS} (CV annidata per la penalizzazione)",
+        "validation": {"method": METHOD,
                        "results": results, "dca_reference": evaluate.dca_reference(y),
                        "optimism": optimism, "optimism_unpenalized": optimism_unpen,
                        "sensitivity_macintosh": sens,
@@ -229,13 +254,7 @@ def main():
         "coef_ci": coef_bootstrap(models["lr"], X, y, laryngoscope.FEATURES),
         "probast": {"tool": "PROBAST (Wolff et al., Ann Intern Med 2019)",
                     "domains": PROBAST, "overall": PROBAST_OVERALL},
-        "limitations": [
-            f"Solo {int(y.sum())} eventi: stime instabili, intervalli di confidenza larghi.",
-            "Solo obesi in chirurgia elettiva, un centro: non trasferibile ad altre popolazioni senza validazione.",
-            "Unico esame delle vie aeree disponibile: Mallampati. El-Ganzouri non calcolabile.",
-            "Metà dei Cormack con videolaringoscopio: il modello lo usa come predittore; nell'app è fissato a lama Macintosh.",
-            "Rischio di bias complessivo alto (PROBAST). Non validato esternamente. **Non usare per decisioni cliniche.**",
-        ],
+        "limitations": limitations(int(y.sum())),
     }
     model = run_vitaldb.export_lr(final, laryngoscope.FEATURES, info, name=MODEL_NAME)
 

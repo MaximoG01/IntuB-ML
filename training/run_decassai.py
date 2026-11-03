@@ -21,19 +21,31 @@ from sklearn.preprocessing import StandardScaler
 
 from app import inference
 from training import decassai, evaluate, run_vitaldb, teaching
-from training.run_laryngoscope import N_REPEATS, coef_bootstrap, cv_with_ci, fmt_ci
+from training.run_laryngoscope import (N_REPEATS, coef_bootstrap, coefficient_lines, cv_with_ci, fmt_ci,
+                                       optimism_table, probast_and_limitations)
 
 MODEL_NAME = "decassai-lr-v1"
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
 LABELS = {
-    "null": "Nessun modello (prevalenza)",
-    "egri": "El-Ganzouri ≥ 4 (ricalibrato)",
-    "mallampati": "Solo Mallampati ≥ III",
-    "lr": "Logistica penalizzata (L2)",
+    "null": "No model (prevalence)",
+    "egri": "El-Ganzouri ≥ 4 (recalibrated)",
+    "mallampati": "Mallampati ≥ III only",
+    "lr": "Penalized logistic (L2)",
     "hgb": "Gradient boosting",
-    "mlp": "Rete neurale (MLP 8)",
+    "mlp": "Neural network (MLP 8)",
 }
 PRIMARY = LABELS["lr"]
+POPULATION = "adults scheduled for thyroidectomy, expected difficult intubation excluded"
+METHOD = f"stratified 5-fold CV × {N_REPEATS} (nested CV for the penalty)"
+
+
+def limitations(events: int) -> list:
+    return [
+        f"{events} events: estimates still unstable; sample size below Riley's criteria.",
+        "Thyroid surgery only, one centre; patients with an expected difficult intubation excluded.",
+        "Mallampati, neck movement and history of difficult intubation available only as yes/no.",
+        "Overall risk of bias high (PROBAST). Not externally validated. **Do not use for clinical decisions.**",
+    ]
 
 
 def unpenalized():
@@ -59,24 +71,24 @@ def external_vitaldb(df):
 
 
 PROBAST = [
-    {"domain": "1. Partecipanti", "risk": "alto", "applicability": "alta",
-     "why": "Esclusi per protocollo i pazienti con intubazione difficile prevista: mancano proprio i casi più "
-            "evidenti, e la capacità dei predittori di distinguere è distorta (bias di spettro).",
-     "applicability_why": "Solo chirurgia tiroidea (77% donne, un quarto con gozzo voluminoso), un centro."},
-    {"domain": "2. Predittori", "risk": "basso", "applicability": "bassa",
-     "why": "Misurati alla visita anestesiologica, prima dell'intubazione, con definizioni standard.",
-     "applicability_why": "Sono quasi tutti gli item di El-Ganzouri, gli stessi del form dell'app."},
-    {"domain": "3. Esito", "risk": "incerto", "applicability": "bassa",
-     "why": "Cormack con lama curva convenzionale, definizione standard; chi intuba probabilmente conosce la "
-            "valutazione pre-operatoria (non in cieco).",
-     "applicability_why": "È esattamente l'esito del progetto (laringoscopia diretta, Cormack 3–4)."},
-    {"domain": "4. Analisi", "risk": "alto", "applicability": None,
-     "why": "48 eventi per 7 predittori (circa 7 per predittore), sotto la numerosità di Riley; Mallampati, collo e "
-            "storia arrivano già tagliati in sì/no. A favore: predittori pre-specificati, nessun mancante, "
-            "penalizzazione, calibrazione e ottimismo misurati.",
+    {"domain": "1. Participants", "risk": "high", "applicability": "high",
+     "why": "Patients with an expected difficult intubation were excluded by protocol: the most obvious cases "
+            "are missing, and the ability of the predictors to discriminate is distorted (spectrum bias).",
+     "applicability_why": "Thyroid surgery only (77% women, a quarter with a large goitre), one centre."},
+    {"domain": "2. Predictors", "risk": "low", "applicability": "low",
+     "why": "Measured at the anaesthesia visit, before intubation, with standard definitions.",
+     "applicability_why": "Almost all the El-Ganzouri items, the same as in the app's form."},
+    {"domain": "3. Outcome", "risk": "unclear", "applicability": "low",
+     "why": "Cormack with a conventional curved blade, standard definition; the intubating clinician probably "
+            "knows the pre-operative assessment (not blinded).",
+     "applicability_why": "Exactly the project's outcome (direct laryngoscopy, Cormack 3–4)."},
+    {"domain": "4. Analysis", "risk": "high", "applicability": None,
+     "why": "48 events for 7 predictors (about 7 per predictor), below Riley's sample size; Mallampati, neck and "
+            "history arrive already cut into yes/no. In favour: pre-specified predictors, no missing values, "
+            "penalization, calibration and optimism measured.",
      "applicability_why": None},
 ]
-PROBAST_OVERALL = {"risk": "alto", "applicability": "alta"}
+PROBAST_OVERALL = {"risk": "high", "applicability": "high"}
 
 
 def model_card(model: dict) -> str:
@@ -84,15 +96,16 @@ def model_card(model: dict) -> str:
     m0 = v["egri_rule"]
     lines = [
         f"# Model card — {model['name']}", "",
-        f"Creato: {model['created']} · regressione logistica penalizzata (L2, C={model['C']:.3g}) · protocollo: SPEC §11", "",
-        "## Dati",
+        f"Created: {model['created']} · penalized logistic regression (L2, C={model['C']:.3g}) · protocol: SPEC §11", "",
+        "## Data",
         f"- {d['source']}, sha256 `{d['sha256'][:12]}…`.",
-        f"- {d['n']} adulti per tiroidectomia; {d['events']} con Cormack 3–4 ({d['prevalence'] * 100:.1f}%), lama curva convenzionale.",
-        "- Esclusi per protocollo i pazienti con intubazione difficile prevista.",
-        f"- Predittori: {', '.join(inference.FEATURE_LABELS[f] for f in model['features'])}.", "",
-        f"## Validazione interna (CV stratificata 5 fold × {N_REPEATS} ripetizioni)",
-        "AUC calcolata dentro ogni fold; media e intervallo 2,5–97,5% tra le ripetizioni (variabilità, non IC).", "",
-        "| Modello | AUC per fold | Brier | Pendenza calibr. | Sens. @15% | Spec. @15% | Segnalati @15% |",
+        f"- {d['n']} adults scheduled for thyroidectomy; {d['events']} with Cormack 3–4 ({d['prevalence'] * 100:.1f}%), "
+        "conventional curved blade.",
+        "- Patients with an expected difficult intubation excluded by protocol.",
+        f"- Predictors: {', '.join(inference.FEATURE_LABELS[f] for f in model['features'])}.", "",
+        f"## Internal validation (stratified 5-fold CV × {N_REPEATS} repeats)",
+        "AUC computed within each fold; mean and 2.5–97.5% range across repeats (variability, not a CI).", "",
+        "| Model | AUC per fold | Brier | Calibr. slope | Sens. @15% | Spec. @15% | Flagged @15% |",
         "|---|---|---|---|---|---|---|",
     ]
     for name, r in v["results"].items():
@@ -100,35 +113,22 @@ def model_card(model: dict) -> str:
         lines.append(f"| {name} | {fmt_ci(r['auc_fold'])} | {fmt_ci(m['brier'])} | {fmt_ci(m['cal_slope'])} | "
                      f"{fmt_ci(m['sensitivity'], True)} | {fmt_ci(m['specificity'], True)} | {fmt_ci(m['flagged'], True)} |")
     lines += [
-        "", f"**El-Ganzouri ≥ 4 come regola fissa (M0)**: AUC {m0['auc']:.3f}, sensibilità {m0['sensitivity'] * 100:.1f}%, "
-        f"specificità {m0['specificity'] * 100:.1f}%, VPP {m0['ppv'] * 100:.1f}%, segnalati {m0['flagged'] * 100:.1f}%.",
-        "", "## Ottimismo (bootstrap di Harrell)", "",
-        "| Modello | Metrica | Apparente | Ottimismo | Corretto |", "|---|---|---|---|---|",
+        "", f"**El-Ganzouri ≥ 4 as a fixed rule (M0)**: AUC {m0['auc']:.3f}, sensitivity {m0['sensitivity'] * 100:.1f}%, "
+        f"specificity {m0['specificity'] * 100:.1f}%, PPV {m0['ppv'] * 100:.1f}%, flagged {m0['flagged'] * 100:.1f}%.",
+        *optimism_table(v),
+        *coefficient_lines(model),
     ]
-    for title, o in (("Logistica penalizzata (principale)", v["optimism"]),
-                     ("Logistica senza penalizzazione", v["optimism_unpenalized"])):
-        lines += [f"| {title} | {k} | {o[k]['apparent']:.3f} | {o[k]['optimism']:.3f} | {o[k]['corrected']:.3f} |"
-                  for k in ("auc", "brier", "cal_slope")]
-    lines += ["", "## Coefficienti (odds ratio per 1 deviazione standard, IC 95% bootstrap)", "",
-              *[f"- {inference.FEATURE_LABELS[f]}: OR {np.exp(model['coef'][f]):.2f} "
-                f"({np.exp(model['coef_ci'][f]['lo']):.2f}–{np.exp(model['coef_ci'][f]['hi']):.2f})"
-                for f in model["features"]]]
     t, e, n = v["thyroid_model"], v["external_vitaldb"], v["sample_size"]
     lines += [
-        "", "## Analisi secondarie",
-        f"- **+ circonferenza del collo** (modello solo per la tiroide): AUC per fold {fmt_ci(t['auc_fold'])}, "
-        f"corretta con bootstrap {t['optimism']['auc']['corrected']:.3f}.",
-        f"- **Modello VitalDB su questi pazienti**: AUC {e['auc_ci']['auc']:.3f} ({e['auc_ci']['lo']:.3f}–{e['auc_ci']['hi']:.3f}); "
-        f"rischio medio previsto {e['mean_predicted'] * 100:.1f}% contro {e['observed'] * 100:.1f}% osservato.",
-        f"- **Numerosità minima (Riley 2020)** con {len(model['features'])} predittori: {n['n_required']} pazienti "
-        f"({n['events_required']} eventi); disponibili {d['n']} ({d['events']}).",
-        "", "## Rischio di bias (PROBAST)", "",
-        "| Dominio | Rischio di bias | Perché | Applicabilità (preoccupazione) | Perché |", "|---|---|---|---|---|",
-        *[f"| {p['domain']} | {p['risk']} | {p['why']} | {p['applicability'] or '—'} | {p['applicability_why'] or '—'} |"
-          for p in model["probast"]["domains"]],
-        f"| **Complessivo** | **{model['probast']['overall']['risk']}** | | **{model['probast']['overall']['applicability']}** | |",
-        "", "## Limiti", *[f"- {x}" for x in model["limitations"]], "",
-        "Fonte: De Cassai A et al., PLoS ONE 2019;14:e0212976, S1 Database (CC-BY 4.0).",
+        "", "## Secondary analyses",
+        f"- **+ neck circumference** (thyroid-only model): AUC per fold {fmt_ci(t['auc_fold'])}, "
+        f"bootstrap-corrected {t['optimism']['auc']['corrected']:.3f}.",
+        f"- **VitalDB model on these patients**: AUC {e['auc_ci']['auc']:.3f} ({e['auc_ci']['lo']:.3f}–{e['auc_ci']['hi']:.3f}); "
+        f"mean predicted risk {e['mean_predicted'] * 100:.1f}% vs {e['observed'] * 100:.1f}% observed.",
+        f"- **Minimum sample size (Riley 2020)** with {len(model['features'])} predictors: {n['n_required']} patients "
+        f"({n['events_required']} events); available {d['n']} ({d['events']}).",
+        *probast_and_limitations(model),
+        "Source: De Cassai A et al., PLoS ONE 2019;14:e0212976, S1 Database (CC-BY 4.0).",
     ]
     return "\n".join(lines) + "\n"
 
@@ -175,20 +175,15 @@ def main():
     info = {
         "training_data": {"source": decassai.SOURCE, "sha256": decassai.sha256(), "n": int(len(y)),
                           "events": int(y.sum()), "prevalence": float(y.mean()),
-                          "population": "adulti per tiroidectomia, esclusa l'intubazione difficile prevista"},
+                          "population": POPULATION},
         "primary": PRIMARY,
-        "validation": {"method": f"CV stratificata 5 fold × {N_REPEATS} (CV annidata per la penalizzazione)",
+        "validation": {"method": METHOD,
                        "results": results, "dca_reference": evaluate.dca_reference(y), "egri_rule": m0,
                        "optimism": optimism, "optimism_unpenalized": optimism_unpen,
                        "thyroid_model": thyroid, "external_vitaldb": external, "sample_size": sample_size},
         "coef_ci": coef_bootstrap(shared["lr"], X, y, decassai.FEATURES),
         "probast": {"tool": "PROBAST (Wolff et al., Ann Intern Med 2019)", "domains": PROBAST, "overall": PROBAST_OVERALL},
-        "limitations": [
-            f"{int(y.sum())} eventi: stime ancora instabili; numerosità sotto i criteri di Riley.",
-            "Solo chirurgia tiroidea, un centro; esclusi i pazienti con intubazione difficile prevista.",
-            "Mallampati, mobilità del collo e storia di intubazione difficile disponibili solo come sì/no.",
-            "Rischio di bias complessivo alto (PROBAST). Non validato esternamente. **Non usare per decisioni cliniche.**",
-        ],
+        "limitations": limitations(int(y.sum())),
     }
     model = run_vitaldb.export_lr(final, decassai.FEATURES, info, name=MODEL_NAME)
 

@@ -8,7 +8,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
     name = db.Column(db.String(128), nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)  # <--- PIÙ LUNGO
+    password_hash = db.Column(db.String(255), nullable=False)  # long enough for modern hashes
     is_admin = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     records = db.relationship("IntubationRecord", backref="operator", lazy="dynamic")
@@ -35,36 +35,36 @@ class IntubationRecord(db.Model):
 
     operator_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
-    # fattori pre-intubazione
+    # pre-intubation factors
     age = db.Column(db.Integer, nullable=False)
     weight = db.Column(db.Float, nullable=False)
-    height = db.Column(db.Float)              # cm, può essere None
+    height = db.Column(db.Float)              # cm, may be None
     sex = db.Column(db.String(1))             # 'M', 'F', 'O' (altro/ignoto)
 
     asa = db.Column(db.Integer)               # ASA 1-5
     emergency = db.Column(db.Boolean)         # intervento urgente
 
-    # item El-Ganzouri (app/egri.py)
+    # El-Ganzouri items (app/egri.py)
     dtm = db.Column(db.Float)                 # distanza tiromentoniera, cm
-    dii = db.Column(db.Float)                 # distanza interincisiva (apertura bocca), cm
+    dii = db.Column(db.Float)                 # interincisor distance (mouth opening), cm
     mallampati = db.Column(db.Integer)        # 1-4
     neck_movement = db.Column(db.Integer)     # 0: >90°, 1: 80-90°, 2: <80°
     can_prognath = db.Column(db.Boolean)      # protrusione mandibolare possibile
     history_difficult = db.Column(db.Integer) # 0 no, 1 dubbia, 2 certa
     stop_bang = db.Column(db.Integer)
-    alganzouri = db.Column(db.Integer)        # totale EGRI calcolato dagli item (non inserito a mano)
+    alganzouri = db.Column(db.Integer)        # EGRI total computed from the items (never typed in)
 
-    drug_used = db.Column(db.String(128))     # lasciati liberi / raw
+    drug_used = db.Column(db.String(128))     # free text / raw
     technique = db.Column(db.String(128))
 
-    # predizione al momento dell'inserimento
+    # prediction at the time of entry
     predicted_proba = db.Column(db.Float)
     model_version = db.Column(db.String(64))
 
-    # esito – possono essere vuoti se il caso è “pending”
+    # outcome: may be empty while the case is pending
     success = db.Column(db.Boolean, nullable=True)
     cormack = db.Column(db.Integer, nullable=True)
-    cormack_device = db.Column(db.String(16))  # 'DL' (lama diretta) o 'VL' (videolaringoscopio)
+    cormack_device = db.Column(db.String(16))  # 'DL' (direct blade) or 'VL' (video laryngoscope)
     difficult_binary = db.Column(db.Boolean, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -107,10 +107,10 @@ class CustomField(db.Model):
             if (self.min_value is not None and v < self.min_value) or (self.max_value is not None and v > self.max_value):
                 lo = "" if self.min_value is None else f"{self.min_value:g}"
                 hi = "" if self.max_value is None else f"{self.max_value:g}"
-                raise ValueError(f"{self.label}: valore fuori dall'intervallo {lo}–{hi} {self.unit or ''}".strip() + ".")
+                raise ValueError(f"{self.label}: value outside the allowed range {lo}–{hi} {self.unit or ''}".strip() + ".")
             return v
         if raw not in self.choice_list:
-            raise ValueError(f"{self.label}: scelta non valida.")
+            raise ValueError(f"{self.label}: invalid choice.")
         return raw
 
 

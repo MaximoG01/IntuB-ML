@@ -1,0 +1,73 @@
+{% extends "learn/_post.html" %}
+{% block post %}
+{% set model = studies.get("decassai-lr-v1") %}
+{% if model %}
+{% set td = model.training_data %}{% set v = model.validation %}
+{% set r = v.results[model.primary] %}{% set m0 = v.egri_rule %}
+
+<h2>The data</h2>
+<p>Prospective study from Padova University Hospital: {{ td.n }} adults scheduled for thyroidectomy, assessed at the
+  anaesthesia visit with almost all the El-Ganzouri items. Cormack 3–4 with a conventional curved blade:
+  <strong>{{ td.events }} patients ({{ "%.1f"|format(td.prevalence * 100) }}%)</strong>. The authors published the data
+  together with the article, as the journal requires: that is why we can use them.</p>
+<p class="card">By protocol, <strong>patients with an expected difficult intubation were excluded</strong>. So the most
+  obvious cases are missing: the predictors look less useful than they would be in practice, and the frequency of
+  Cormack 3–4 is lower. It is the main problem of this study (see
+  <a href="{{ url_for('main.blog_post', slug='bias-probast') }}">PROBAST</a>).</p>
+
+<h2>The protocol, written first</h2>
+<p>Primary model: penalized logistic regression on 7 predictors ({{ model.features|map("feature_label")|join(", ") }}).
+  Clinical reference: the El-Ganzouri ≥ 4 rule as it is. Everything was fixed in SPEC §11 before looking at the results.</p>
+
+<h2>What we found</h2>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Model</th><th>AUC</th><th>Sensitivity @15%</th><th>Flagged @15%</th></tr></thead>
+  <tbody>
+    <tr><td>El-Ganzouri ≥ 4, 1996 rule</td><td>{{ "%.2f"|format(m0.auc) }}</td>
+      <td>{{ "%.0f"|format(m0.sensitivity * 100) }}%</td><td>{{ "%.0f"|format(m0.flagged * 100) }}%</td></tr>
+    {% for name, res in v.results.items() if not name.startswith("No model") %}
+    <tr {% if name == model.primary %}class="row-active"{% endif %}><td>{{ name }}</td>
+      <td>{{ "%.2f"|format(res.auc_fold.mean) }}</td>
+      <td>{{ "%.0f"|format(res.metrics.sensitivity.mean * 100) }}%</td>
+      <td>{{ "%.0f"|format(res.metrics.flagged.mean * 100) }}%</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="muted small">Models: AUC computed within the cross-validation folds (5 × 20). The 1996 rule is not trained, so
+  its AUC is computed directly on all patients.</p>
+<ul>
+  <li><strong>Optimism</strong>: the primary model has AUC {{ "%.2f"|format(v.optimism.auc.apparent) }} on the training
+    data and {{ "%.2f"|format(v.optimism.auc.corrected) }} after bootstrap correction; without penalization the corrected
+    calibration slope would be {{ "%.2f"|format(v.optimism_unpenalized.cal_slope.corrected) }}.</li>
+  <li><strong>Neck circumference</strong> (thyroid only): added to the model it brings the AUC to
+    {{ "%.2f"|format(v.thyroid_model.auc_fold.mean) }} (corrected {{ "%.2f"|format(v.thyroid_model.optimism.auc.corrected) }}).</li>
+  <li><strong>VitalDB model</strong> (demographics only) on these patients: AUC
+    {{ "%.2f"|format(v.external_vitaldb.auc_ci.auc) }}, mean predicted risk
+    {{ "%.1f"|format(v.external_vitaldb.mean_predicted * 100) }}% vs {{ "%.1f"|format(v.external_vitaldb.observed * 100) }}%.</li>
+  <li><strong>Sample size</strong>: for 7 predictors Riley requires {{ v.sample_size.n_required }} patients; we have {{ td.n }}.</li>
+</ul>
+
+<h2>Odds ratios of the primary model</h2>
+<p class="muted">Odds ratio per standard deviation of each variable (variables are standardized before the penalty).
+  For yes/no variables the standard deviation depends on how common "yes" is: read the ORs as direction and relative
+  strength, not as the effect of going from no to yes. In brackets the bootstrap 95% interval.</p>
+<ul>
+  {% for f, c in model.coef.items() %}
+    <li>{{ f|feature_label }}: OR {{ "%.2f"|format(c|exp) }}
+      <span class="muted">({{ "%.2f"|format(model.coef_ci[f].lo|exp) }}–{{ "%.2f"|format(model.coef_ci[f].hi|exp) }})</span></li>
+  {% endfor %}
+</ul>
+<p>A model is compared with the rule the clinician knows: a new model makes sense only if it does better than
+  El-Ganzouri while flagging the same share of patients. Overall risk of bias:
+  <strong>{{ model.probast.overall.risk }}</strong>. All the numbers: <code>models/{{ model.name }}/model_card.md</code>.</p>
+{% else %}
+<p class="muted">Results not available: run <code>python -m training.run_decassai</code>.</p>
+{% endif %}
+{% endblock %}
+{% block references %}
+<li>De Cassai A et al. Prediction of difficult tracheal intubations in thyroid surgery. Predictive value of neck
+  circumference to thyromental distance ratio. PLoS ONE 2019;14:e0212976 (data: S1 Database, CC-BY 4.0).</li>
+<li>El-Ganzouri AR et al. Anesth Analg 1996;82:1197-204.</li>
+{% endblock %}

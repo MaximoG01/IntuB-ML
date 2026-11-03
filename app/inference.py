@@ -14,19 +14,19 @@ from typing import Dict, List, Optional, Tuple
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
 
 FEATURE_LABELS = {
-    "age": "Età",
-    "sex_male": "Sesso maschile",
+    "age": "Age",
+    "sex_male": "Male sex",
     "bmi": "BMI",
     "asa": "ASA",
-    "emergency": "Urgenza",
+    "emergency": "Emergency",
     "mallampati": "Mallampati",
-    "video_laryngoscope": "Videolaringoscopio",
+    "video_laryngoscope": "Video laryngoscope",
     "mallampati_ge3": "Mallampati III–IV",
-    "mouth_lt4": "Apertura bocca < 4 cm",
-    "dtm": "Distanza tiromentoniera",
-    "neck_limited": "Mobilità del collo ≤ 90°",
-    "no_prognath": "Prognatismo non possibile",
-    "history_difficult_any": "Storia di intubazione difficile",
+    "mouth_lt4": "Mouth opening < 4 cm",
+    "dtm": "Thyromental distance",
+    "neck_limited": "Neck movement ≤ 90°",
+    "no_prognath": "Cannot protrude the jaw",
+    "history_difficult_any": "History of difficult intubation",
 }
 
 

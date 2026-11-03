@@ -51,7 +51,7 @@ Apri http://127.0.0.1:5000.
 
 ```powershell
 pip install -r requirements.txt
-powershell -ExecutionPolicy Bypass -File .\avvia_rete_locale.ps1
+powershell -ExecutionPolicy Bypass -File .\start_local_network.ps1
 ```
 
 La prima volta chiede un **codice invito** e crea `.env.lan` (segreti, ignorato da git). Poi mostra
@@ -67,10 +67,10 @@ $env:FLASK_APP = "wsgi.py"; flask make-admin nome@esempio.it
 
 ### Variabili aggiuntive
 
-L'amministratore apre **Variabili** nel menu e aggiunge una variabile (numero con unità e
-intervallo ammesso, oppure scelta da una lista): compare subito nel form **Valuta** per tutti.
+L'amministratore apre **Variables** nel menu e aggiunge una variabile (numero con unità e
+intervallo ammesso, oppure scelta da una lista): compare subito nel form **Assess** per tutti.
 Non entra nel calcolo del rischio finché non si allena un modello che la usa; i valori si scaricano
-con **Scarica CSV** (colonne `x_<nome>`, cella vuota = mancante) per l'allenamento offline.
+con **Download CSV** (colonne `x_<nome>`, cella vuota = mancante) per l'allenamento offline.
 
 ### Allenare e confrontare i modelli (offline)
 

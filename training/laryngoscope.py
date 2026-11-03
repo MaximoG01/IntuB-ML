@@ -18,7 +18,7 @@ import pandas as pd
 COMMIT = "be27ec88ac8955b4babe1456e6e6d6a7f3c117cb"
 URL = f"https://raw.githubusercontent.com/higgi13425/medicaldata/{COMMIT}/data/laryngoscope.rda"
 DEFAULT_PATH = Path(__file__).resolve().parent.parent / "data" / "external" / "laryngoscope" / "laryngoscope.rda"
-SOURCE = "medicaldata::laryngoscope (Abdallah et al., Anesth Analg 2011; licenza MIT)"
+SOURCE = "medicaldata::laryngoscope (Abdallah et al., Anesth Analg 2011; MIT licence)"
 
 FEATURES = ["mallampati", "bmi", "age", "sex_male", "video_laryngoscope"]
 

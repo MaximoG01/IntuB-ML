@@ -1,0 +1,76 @@
+{% extends "learn/_post.html" %}
+{% block post %}
+{% set model = studies.get("laryngoscope-lr-v1") %}
+{% if model and model.validation.optimism %}
+{% set td = model.training_data %}{% set v = model.validation %}
+{% set r = v.results[model.primary] %}
+
+<h2>The question</h2>
+<p>With the data collected before induction (Mallampati, BMI, age, sex), can we predict Cormack 3–4 in obese patients?
+  And does a model trained on another population work here too?</p>
+
+<h2>The data</h2>
+<p>{{ td.n }} obese adults (BMI 30–50) in elective surgery, from a randomized trial comparing the Macintosh blade with
+  the Pentax AWS video laryngoscope. Cormack 3–4: <strong>{{ td.events }} patients
+  ({{ "%.0f"|format(td.prevalence * 100) }}%)</strong>.</p>
+<p class="card">Watch the coding: the dataset documentation says "1 = good = Cormack 3 or 4", which contradicts itself.
+  Read literally it would give 82% Cormack 3–4. Checking against the other outcomes (ease, time, first-attempt success)
+  shows that 0 = poor view. <strong>Always check the coding on the data</strong>, not only in the documentation.</p>
+
+<h2>The protocol, written first</h2>
+<p>Predictors, primary model (penalized logistic regression), metrics and threshold were fixed <strong>before</strong>
+  looking at the results (SPEC §10). That way nobody can "pick the winner" afterwards.</p>
+
+<h2>What we found</h2>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Question</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>Does the model separate the difficult cases?</td>
+      <td>AUC {{ "%.2f"|format(r.auc_fold.mean) }} in cross-validation, {{ "%.2f"|format(v.optimism.auc.corrected) }}
+        bootstrap-corrected: <strong>almost a coin toss</strong>.</td></tr>
+    <tr><td>Does Mallampati help?</td>
+      <td>Alone, AUC {{ "%.2f"|format(v.results["Mallampati only"].auc_fold.mean) }}; Cormack 3–4 is about 18% in all
+        classes 1–3. In these patients, no.</td></tr>
+    <tr><td>Do more complex algorithms do better?</td>
+      <td>No: gradient boosting {{ "%.2f"|format(v.results["Gradient boosting"].auc_fold.mean) }}, neural network
+        {{ "%.2f"|format(v.results["Neural network (MLP 8)"].auc_fold.mean) }}, all within the variability.</td></tr>
+    <tr><td>Macintosh blade only?</td>
+      <td>AUC {{ "%.2f"|format(v.sensitivity_macintosh.auc_fold.mean) }} on {{ v.sensitivity_macintosh.n }} patients
+        ({{ v.sensitivity_macintosh.events }} events): too few to conclude.</td></tr>
+    <tr><td>Does the VitalDB model work here?</td>
+      <td>It predicts {{ "%.1f"|format(v.external_vitaldb.mean_predicted * 100) }}% on average vs
+        {{ "%.0f"|format(v.external_vitaldb.observed * 100) }}% observed: <strong>it underestimates by about
+        {{ (v.external_vitaldb.observed / v.external_vitaldb.mean_predicted)|round|int }} times</strong>, and flags nobody
+        at the 15% threshold.</td></tr>
+    <tr><td>Were there enough patients?</td>
+      <td>No: Riley's criteria would require {{ v.sample_size.n_required }} ({{ v.sample_size.events_required }} events).</td></tr>
+    <tr><td>Risk of bias (PROBAST)</td>
+      <td><strong>{{ model.probast.overall.risk }}</strong> (outcome measured with two different devices, few events).</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>What it would mean in the app</h2>
+<p>The penalized model shrank the weights almost to zero and gives almost everyone a risk close to
+  {{ "%.0f"|format(td.prevalence * 100) }}%, above the 15% threshold. In practice it says: <em>in an obese patient,
+  always prepare plan B</em>. This is consistent with the decision curve ("always prepare" beats "never" when the
+  frequency exceeds the threshold), but <strong>it is not a model that helps tell patients apart</strong>.</p>
+
+<h2>Why a negative result matters</h2>
+<ul>
+  <li>It shows that the limit is the <strong>data</strong> (few events, a single airway examination), not the algorithm.</li>
+  <li>It says what to collect: all the El-Ganzouri items, Cormack with a Macintosh blade, hundreds of events.</li>
+  <li>It demonstrates the method on real data: protocol written first, same folds for everyone, calibration, optimism, bias.</li>
+</ul>
+<p>All the numbers: <code>models/{{ model.name }}/model_card.md</code>.</p>
+{% else %}
+<p class="muted">No results available: run <code>python -m training.run_laryngoscope</code>.</p>
+{% endif %}
+{% endblock %}
+{% block references %}
+<li>Abdallah et al. A randomized comparison between the Pentax AWS video laryngoscope and the Macintosh laryngoscope
+  in morbidly obese patients. Anesth Analg 2011;113:1082-7.</li>
+<li>Nowacki AS. Laryngoscope Dataset. TSHS Resources Portal 2017; R package medicaldata (MIT licence).</li>
+<li>Lee HC et al. VitalDB. Sci Data 2022;9:279 (CC-BY 4.0).</li>
+{% endblock %}

@@ -1,20 +1,20 @@
 {% extends "learn/_post.html" %}
 {% block post %}
-<h2>Una rete neurale piccola</h2>
+<h2>A small neural network</h2>
 {% set nn0 = teaching.neural_net if teaching else none %}
-<p>Una rete neurale è una catena di logistiche: ogni nodo nascosto combina i predittori con i suoi pesi, e il nodo
-  finale combina i nodi nascosti.{% if nn0 %} Con {{ nn0.inputs|length }} predittori e 8 nodi nascosti sono già
-  {{ nn0.inputs|length * 8 + 17 }} parametri, contro i {{ nn0.inputs|length + 1 }} della logistica, per
-  {{ nn0.events_train + nn0.events_val }} eventi.{% endif %}</p>
+<p>A neural network is a chain of logistic regressions: each hidden node combines the predictors with its own
+  weights, and the final node combines the hidden nodes.{% if nn0 %} With {{ nn0.inputs|length }} predictors and 8 hidden
+  nodes there are already {{ nn0.inputs|length * 8 + 17 }} parameters, against {{ nn0.inputs|length + 1 }} for the
+  logistic regression, for {{ nn0.events_train + nn0.events_val }} events.{% endif %}</p>
 
 {% if teaching %}
 {% set nn = teaching.neural_net %}
-{% set net = nn.curves["senza regolarizzazione"] %}
+{% set net = nn.curves["without regularization"] %}
 {% set ni = nn.inputs|length %}{% set nh = net.w2|length %}
 {% set maxw = [net.w1|map("max")|max, (net.w1|map("min")|min)|abs]|max %}
 {% set maxw2 = [net.w2|max, (net.w2|min)|abs]|max %}
 <figure class="nn-figure">
-  <svg viewBox="0 0 560 300" role="img" aria-label="Schema della rete: 5 ingressi, 8 nodi nascosti, 1 uscita; spessore = peso">
+  <svg viewBox="0 0 560 300" role="img" aria-label="Network diagram: inputs, 8 hidden nodes, 1 output; thickness = weight">
     {% for h in range(nh) %}{% set yh = 30 + h * 240 / (nh - 1) %}
       {% for i in range(ni) %}{% set yi = 40 + i * 220 / (ni - 1) %}{% set w = net.w1[h][i] %}
         <line x1="130" y1="{{ yi }}" x2="300" y2="{{ yh }}" stroke="{{ '#2a78d6' if w >= 0 else '#eb6834' }}"
@@ -30,16 +30,16 @@
       <text x="116" y="{{ yi + 4 }}" text-anchor="end" font-size="12" fill="#0b0b0b">{{ nn.inputs[i] }}</text>
     {% endfor %}
     <circle cx="470" cy="150" r="11" fill="#fcfcfb" stroke="#0b0b0b" stroke-width="2"/>
-    <text x="488" y="146" font-size="12" fill="#0b0b0b">rischio</text>
+    <text x="488" y="146" font-size="12" fill="#0b0b0b">risk of</text>
     <text x="488" y="161" font-size="12" fill="#0b0b0b">Cormack 3–4</text>
   </svg>
-  <figcaption class="muted small">Pesi della rete allenata senza regolarizzazione. Spessore = grandezza del peso;
-    linea continua blu = peso positivo, tratteggiata arancione = negativo.</figcaption>
+  <figcaption class="muted small">Weights of the network trained without regularization. Thickness = size of the
+    weight; solid blue line = positive weight, dashed orange = negative.</figcaption>
 </figure>
 
-<h2>Errore sui pazienti di allenamento e su quelli tenuti da parte</h2>
-<p>I pazienti sono divisi a caso: {{ nn.n_train }} per allenare ({{ nn.events_train }} eventi) e {{ nn.n_val }}
-  tenuti da parte ({{ nn.events_val }} eventi). A ogni giro sui dati (<em>epoca</em>) si misura l'errore su entrambi.</p>
+<h2>Error on the training patients and on the held-out ones</h2>
+<p>Patients are split at random: {{ nn.n_train }} for training ({{ nn.events_train }} events) and {{ nn.n_val }}
+  held out ({{ nn.events_val }} events). At each pass over the data (<em>epoch</em>) the error is measured on both.</p>
 <div class="small-multiples">
   {% for label in nn.curves %}
   <div>
@@ -49,17 +49,18 @@
   {% endfor %}
 </div>
 <ul>
-  <li><strong>Senza regolarizzazione</strong>: l'errore di allenamento scende quasi a zero
-    ({{ "%.2f"|format(net.train[-1]) }}), quello sui pazienti nuovi scende per poche epoche e poi
-    <strong>risale</strong> ({{ "%.2f"|format(net.val[-1]) }} alla fine). La rete sta imparando a memoria i
-    {{ nn.n_train }} pazienti, rumore compreso.</li>
-  <li><strong>Con regolarizzazione</strong> (penalità sui pesi grandi) le due curve restano vicine. Confronta l'errore
-    sui pazienti nuovi con la linea grigia: se non scende sotto, la rete non fa meglio che dare a tutti lo stesso rischio.</li>
+  <li><strong>Without regularization</strong>: the training error falls almost to zero
+    ({{ "%.2f"|format(net.train[-1]) }}), the error on new patients falls for a few epochs and then
+    <strong>rises again</strong> ({{ "%.2f"|format(net.val[-1]) }} at the end). The network is learning the
+    {{ nn.n_train }} patients by heart, noise included.</li>
+  <li><strong>With regularization</strong> (a penalty on large weights) the two curves stay close. Compare the error
+    on new patients with the grey line: if it does not go below it, the network does no better than giving everyone the
+    same risk.</li>
 </ul>
 <details>
-  <summary>Tabella</summary>
+  <summary>Table</summary>
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>Epoca</th>{% for label in nn.curves %}<th>{{ label }}: allenamento</th><th>{{ label }}: nuovi</th>{% endfor %}</tr></thead>
+    <thead><tr><th>Epoch</th>{% for label in nn.curves %}<th>{{ label }}: training</th><th>{{ label }}: new</th>{% endfor %}</tr></thead>
     <tbody>{% for e in [1, 10, 25, 50, 100, 200, 400] %}
       <tr><td>{{ e }}</td>{% for c in nn.curves.values() %}<td>{{ "%.3f"|format(c.train[e - 1]) }}</td><td>{{ "%.3f"|format(c.val[e - 1]) }}</td>{% endfor %}</tr>
     {% endfor %}</tbody>
@@ -67,22 +68,22 @@
 </details>
 {% endif %}
 
-<h2>Lo stesso problema nella logistica</h2>
+<h2>The same problem in logistic regression</h2>
 {% if model and model.validation.optimism_unpenalized %}
 {% set o = model.validation.optimism_unpenalized %}
-<p>Anche una logistica senza penalizzazione con {{ model.features|length }} predittori si adatta troppo: sui dati di allenamento ha AUC
-  {{ "%.2f"|format(o.auc.apparent) }}, ma il bootstrap stima che su pazienti nuovi scenderebbe a
-  {{ "%.2f"|format(o.auc.corrected) }}, con pendenza di calibrazione {{ "%.2f"|format(o.cal_slope.corrected) }}
-  (predizioni troppo estreme: un 30% previsto sarebbe in realtà molto più vicino alla media).</p>
+<p>Even an unpenalized logistic regression with {{ model.features|length }} predictors fits too closely: on the
+  training data it has AUC {{ "%.2f"|format(o.auc.apparent) }}, but the bootstrap estimates it would fall to
+  {{ "%.2f"|format(o.auc.corrected) }} on new patients, with calibration slope {{ "%.2f"|format(o.cal_slope.corrected) }}
+  (a slope below 1 means predictions that are too extreme).</p>
 {% endif %}
-<p>La logistica <strong>penalizzata</strong> sceglie con validazione incrociata quanto "tirare" i pesi verso zero:
-  quando il segnale è debole li porta quasi a zero (è successo con gli obesi), quando c'è li tiene ma li ammorbidisce.
-  Le regole pratiche:</p>
+<p><strong>Penalized</strong> logistic regression uses cross-validation to choose how far to "pull" the weights
+  towards zero: when the signal is weak it takes them almost to zero (as happened with the obese patients), when there is
+  signal it keeps them but softens them. Practical rules:</p>
 <ul>
-  <li>prima della scelta dell'algoritmo, contare gli <strong>eventi</strong> (criteri di Riley);</li>
-  <li>valutare sempre su pazienti che il modello non ha visto, e la <strong>calibrazione</strong> oltre all'AUC;</li>
-  <li>una rete neurale si giustifica solo con molti eventi e predittori che interagiscono; su dati tabellari piccoli
-    la logistica penalizzata è di solito altrettanto buona e più facile da spiegare.</li>
+  <li>before choosing the algorithm, count the <strong>events</strong> (Riley's criteria);</li>
+  <li>always evaluate on patients the model has not seen, and check <strong>calibration</strong> as well as AUC;</li>
+  <li>a neural network is justified only with many events and interacting predictors; on small tabular data penalized
+    logistic regression is usually just as good and easier to explain.</li>
 </ul>
 
 {% if teaching %}
@@ -100,16 +101,16 @@
     new Chart(document.getElementById("nn" + (k + 1)), {
       type: "line",
       data: { labels: epochs, datasets: [
-        { label: "Pazienti di allenamento", data: c.train, borderColor: "#2a78d6", borderWidth: 2, pointRadius: 0 },
-        { label: "Pazienti nuovi", data: c.val, borderColor: "#eb6834", borderWidth: 2, borderDash: [6, 4], pointRadius: 0 },
-        { label: "Stesso rischio per tutti", data: epochs.map(() => nullLoss), borderColor: "#9aa5b1", borderWidth: 1, pointRadius: 0 }
+        { label: "Training patients", data: c.train, borderColor: "#2a78d6", borderWidth: 2, pointRadius: 0 },
+        { label: "New patients", data: c.val, borderColor: "#eb6834", borderWidth: 2, borderDash: [6, 4], pointRadius: 0 },
+        { label: "Same risk for everyone", data: epochs.map(() => nullLoss), borderColor: "#9aa5b1", borderWidth: 1, pointRadius: 0 }
       ]},
       options: { maintainAspectRatio: false, animation: false,
         interaction: { mode: "index", intersect: false },
-        plugins: { tooltip: { callbacks: { title: items => "Epoca " + items[0].label,
+        plugins: { tooltip: { callbacks: { title: items => "Epoch " + items[0].label,
                      label: it => it.dataset.label + ": " + it.parsed.y.toFixed(3) } } },
-        scales: { x: { title: { display: true, text: "Epoca" }, ticks: { maxTicksLimit: 8 }, grid: { display: false } },
-                  y: { min: 0, max: yMax, title: { display: true, text: "Errore (log-loss)" }, grid: { color: "#eeeeec" } } } }
+        scales: { x: { title: { display: true, text: "Epoch" }, ticks: { maxTicksLimit: 8 }, grid: { display: false } },
+                  y: { min: 0, max: yMax, title: { display: true, text: "Error (log-loss)" }, grid: { color: "#eeeeec" } } } }
     });
   });
 })();

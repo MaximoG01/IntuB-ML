@@ -164,7 +164,7 @@ Funzionali:
   identificativi). Si disattivano, non si cancellano. Valore mancante = nessuna riga, mai 0.
   Non entrano nella predizione finché un modello non è allenato su di esse.
 - R4 ✅ 03/11/2026 — Export CSV pseudonimizzato (solo admin): senza nomi né campi di testo libero.
-- R7 ✅ 03/11/2026 — Condivisione in rete locale (`avvia_rete_locale.ps1`, server waitress) con
+- R7 ✅ 03/11/2026 — Condivisione in rete locale (`start_local_network.ps1`, server waitress) con
   registrazione solo tramite **codice invito** (`INVITE_CODE`) e ruolo admin (`flask make-admin`).
 
 Non funzionali:

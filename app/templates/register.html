@@ -1,8 +1,8 @@
 
 {% extends "base.html" %}
-{% block title %}Register – intuB{% endblock %}
+{% block title %}Sign up – intuB{% endblock %}
 {% block content %}
-  <h2>Register</h2>
+  <h2>Sign up</h2>
   <form method="post">
     {{ form.hidden_tag() }}
     {% set fields = [form.name, form.email, form.password, form.password2] + ([form.invite_code] if invite_required else []) %}

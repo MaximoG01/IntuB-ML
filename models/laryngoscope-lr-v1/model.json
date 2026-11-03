@@ -41,22 +41,22 @@
  "C": 0.005994842503189409,
  "threshold": 0.15,
  "training_data": {
-  "source": "medicaldata::laryngoscope (Abdallah et al., Anesth Analg 2011; licenza MIT)",
+  "source": "medicaldata::laryngoscope (Abdallah et al., Anesth Analg 2011; MIT licence)",
   "commit": "be27ec88ac8955b4babe1456e6e6d6a7f3c117cb",
   "sha256": "539476b20d141c3994baa03c2cec882c96a48d0ca986c1806d5b8636f0829179",
   "n": 99,
   "events": 18,
   "prevalence": 0.18181818181818182,
-  "population": "adulti obesi (BMI 30\u201350), chirurgia elettiva"
+  "population": "obese adults (BMI 30\u201350), elective surgery"
  },
  "fixed": {
   "video_laryngoscope": 0.0
  },
- "primary": "Logistica penalizzata (L2)",
+ "primary": "Penalized logistic (L2)",
  "validation": {
-  "method": "CV stratificata 5 fold \u00d7 20 (CV annidata per la penalizzazione)",
+  "method": "stratified 5-fold CV \u00d7 20 (nested CV for the penalty)",
   "results": {
-   "Nessun modello (prevalenza)": {
+   "No model (prevalence)": {
     "metrics": {
      "auc": {
       "mean": 0.46193415637860075,
@@ -247,7 +247,7 @@
      "hi": 0.5
     }
    },
-   "Solo Mallampati": {
+   "Mallampati only": {
     "metrics": {
      "auc": {
       "mean": 0.43045267489711936,
@@ -466,7 +466,7 @@
      "hi": 0.5549754901960784
     }
    },
-   "Logistica penalizzata (L2)": {
+   "Penalized logistic (L2)": {
     "metrics": {
      "auc": {
       "mean": 0.4664951989026063,
@@ -982,7 +982,7 @@
      "hi": 0.6384658394607843
     }
    },
-   "Rete neurale (MLP 8)": {
+   "Neural network (MLP 8)": {
     "metrics": {
      "auc": {
       "mean": 0.4717764060356654,
@@ -1411,44 +1411,44 @@
   "tool": "PROBAST (Wolff et al., Ann Intern Med 2019)",
   "domains": [
    {
-    "domain": "1. Partecipanti",
-    "risk": "incerto",
-    "applicability": "alta",
-    "why": "Dati di un RCT (fonte accettabile), ma criteri di esclusione da verificare sull'articolo originale: se escludeva vie aeree difficili note, la prevalenza \u00e8 distorta.",
-    "applicability_why": "Solo obesi (BMI 30\u201350), chirurgia elettiva, un centro: non rappresenta la popolazione generale della domanda (\u00a71)."
+    "domain": "1. Participants",
+    "risk": "unclear",
+    "applicability": "high",
+    "why": "RCT data (an acceptable source), but the exclusion criteria must be checked in the original paper: if known difficult airways were excluded, the prevalence is distorted.",
+    "applicability_why": "Only obese patients (BMI 30\u201350), elective surgery, one centre: not the general population of our question (\u00a71)."
    },
    {
-    "domain": "2. Predittori",
-    "risk": "basso",
-    "applicability": "alta",
-    "why": "Predittori misurati prima della laringoscopia, definizioni standard, scelti prima dell'analisi.",
-    "applicability_why": "Manca quasi tutto l'El-Ganzouri (DTM, apertura bocca, collo, prognatismo, storia): c'\u00e8 solo il Mallampati."
+    "domain": "2. Predictors",
+    "risk": "low",
+    "applicability": "high",
+    "why": "Predictors measured before laryngoscopy, standard definitions, chosen before the analysis.",
+    "applicability_why": "Almost all of El-Ganzouri is missing (TMD, mouth opening, neck, jaw protrusion, history): only Mallampati is available."
    },
    {
-    "domain": "3. Esito",
-    "risk": "alto",
-    "applicability": "alta",
-    "why": "Cormack dato da chi intuba, che conosce il Mallampati (non in cieco); met\u00e0 dei pazienti valutata con videolaringoscopio, che migliora la visione: l'esito non \u00e8 uguale per tutti.",
-    "applicability_why": "La domanda \u00e8 la laringoscopia diretta; qui l'esito \u00e8 solo binario (1\u20132 vs 3\u20134)."
+    "domain": "3. Outcome",
+    "risk": "high",
+    "applicability": "high",
+    "why": "Cormack graded by the intubating clinician, who knows the Mallampati (not blinded); half of the patients assessed with a video laryngoscope, which improves the view: the outcome is not the same for everyone.",
+    "applicability_why": "Our question is direct laryngoscopy; here the outcome is only binary (1\u20132 vs 3\u20134)."
    },
    {
-    "domain": "4. Analisi",
-    "risk": "alto",
+    "domain": "4. Analysis",
+    "risk": "high",
     "applicability": null,
-    "why": "18 eventi per 5 predittori (3,6 eventi per predittore), molto sotto la numerosit\u00e0 minima di Riley. A favore: predittori pre-specificati, niente selezione univariata, mancanti imputati dentro i fold, penalizzazione, calibrazione e ottimismo misurati.",
+    "why": "18 events for 5 predictors (3.6 events per predictor), far below Riley's minimum sample size. In favour: pre-specified predictors, no univariable selection, missing values imputed within the folds, penalization, calibration and optimism measured.",
     "applicability_why": null
    }
   ],
   "overall": {
-   "risk": "alto",
-   "applicability": "alta"
+   "risk": "high",
+   "applicability": "high"
   }
  },
  "limitations": [
-  "Solo 18 eventi: stime instabili, intervalli di confidenza larghi.",
-  "Solo obesi in chirurgia elettiva, un centro: non trasferibile ad altre popolazioni senza validazione.",
-  "Unico esame delle vie aeree disponibile: Mallampati. El-Ganzouri non calcolabile.",
-  "Met\u00e0 dei Cormack con videolaringoscopio: il modello lo usa come predittore; nell'app \u00e8 fissato a lama Macintosh.",
-  "Rischio di bias complessivo alto (PROBAST). Non validato esternamente. **Non usare per decisioni cliniche.**"
+  "Only 18 events: unstable estimates, wide confidence intervals.",
+  "Only obese patients in elective surgery, one centre: not transferable to other populations without validation.",
+  "The only airway examination available is Mallampati. El-Ganzouri cannot be computed.",
+  "Half of the Cormack grades were obtained with a video laryngoscope: the model uses the device as a predictor; in the app it is fixed to a Macintosh blade.",
+  "Overall risk of bias high (PROBAST). Not externally validated. **Do not use for clinical decisions.**"
  ]
 }

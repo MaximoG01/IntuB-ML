@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Valuta — intuB{% endblock %}
+{% block title %}Assess — intuB{% endblock %}
 {% block content %}
 
-<h2>Valuta il paziente</h2>
-<p class="muted">Rischio di laringoscopia difficile (Cormack-Lehane 3–4). Soglia: {{ (threshold * 100)|round|int }}%.
-  <strong>Non è un dispositivo medico.</strong></p>
+<h2>Assess the patient</h2>
+<p class="muted">Risk of difficult laryngoscopy (Cormack-Lehane 3–4). Threshold: {{ (threshold * 100)|round|int }}%.
+  <strong>Not a medical device.</strong></p>
 
 {% if error %}<div class="flash flash-danger">{{ error }}</div>{% endif %}
 
@@ -12,53 +12,53 @@
 <section class="result-card {% if result and result.difficult %}result-high{% else %}result-low{% endif %}">
   <div class="result-grid">
     <div>
-      <h3>Modello statistico</h3>
+      <h3>Statistical model</h3>
       {% if result %}
         <p class="result-number">{{ result.probability|pct }}</p>
-        <div class="meter" role="img" aria-label="rischio {{ result.probability|pct }} su soglia {{ (threshold * 100)|round|int }}%">
+        <div class="meter" role="img" aria-label="risk {{ result.probability|pct }}, threshold {{ (threshold * 100)|round|int }}%">
           <div class="meter-fill" style="width: {{ [result.probability / 0.30 * 100, 100]|min }}%"></div>
           <div class="meter-threshold" style="left: {{ threshold / 0.30 * 100 }}%"></div>
         </div>
         <p class="result-label">
-          {% if result.difficult %}▲ SOPRA SOGLIA — prepara il piano B{% else %}● Sotto soglia{% endif %}
+          {% if result.difficult %}▲ ABOVE THRESHOLD — prepare plan B{% else %}● Below threshold{% endif %}
         </p>
-        <p class="muted small">Fattori che pesano di più:</p>
+        <p class="muted small">Factors that weigh most:</p>
         <ul class="factors">
           {% for c in result.contributions if not c.fixed %}{% if loop.index <= 3 %}
             <li>{{ "+" if c.contribution > 0 else "−" }} {{ c.label }}
-              {% if c.imputed %}<span class="muted">(mancante: usata la mediana)</span>{% endif %}</li>
+              {% if c.imputed %}<span class="muted">(missing: median used)</span>{% endif %}</li>
           {% endif %}{% endfor %}
         </ul>
       {% else %}
-        <p class="muted">Nessun modello attivo.</p>
+        <p class="muted">No active model.</p>
       {% endif %}
     </div>
     <div>
       <h3>El-Ganzouri (1996)</h3>
       {% if egri.total is not none %}
         <p class="result-number">{{ egri.total }} / 12</p>
-        <p class="result-label">{% if egri.positive %}▲ Positivo (≥ 4){% else %}● Negativo (&lt; 4){% endif %}</p>
+        <p class="result-label">{% if egri.positive %}▲ Positive (≥ 4){% else %}● Negative (&lt; 4){% endif %}</p>
       {% else %}
         <p class="result-number">≥ {{ egri.partial }} / 12</p>
-        <p class="muted small">Incompleto: mancano {{ egri.missing|length }} item su 7.</p>
+        <p class="muted small">Incomplete: {{ egri.missing|length }} of 7 items missing.</p>
       {% endif %}
     </div>
   </div>
   {% if model %}
     {% set td = model.training_data %}
-    {% set r = model.validation.results[model.primary or "Logistica penalizzata (L2)"] %}
+    {% set r = model.validation.results[model.primary or "Penalized logistic (L2)"] %}
     <p class="muted small model-note">
-      Modello <strong>{{ model.name }}</strong>: allenato su {{ td.source }} ({{ td.n }} pazienti{% if td.population %}, {{ td.population }}{% endif %}),
-      variabili: {{ model.features|map("feature_label")|join(", ") }}{% if model.fixed %}
-      (predizione per lama Macintosh){% endif %}.
+      Model <strong>{{ model.name }}</strong>: trained on {{ td.source }} ({{ td.n }} patients{% if td.population %}, {{ td.population }}{% endif %}),
+      variables: {{ model.features|map("feature_label")|join(", ") }}{% if model.fixed %}
+      (prediction for a Macintosh blade){% endif %}.
       {% set auc = (r.auc_fold or r.metrics.auc).mean %}
-      AUC ≈ {{ "%.2f"|format(auc) }}{% if auc < 0.6 %}: discrimina poco, il numero è vicino alla frequenza media del
-      dataset di allenamento ({{ "%.0f"|format(td.prevalence * 100) }}%){% else %}; frequenza del Cormack 3–4 nei dati
-      di allenamento {{ "%.0f"|format(td.prevalence * 100) }}%: in un'altra popolazione il rischio può essere diverso{% endif %}.
-      <a href="{{ url_for('main.analytics') }}">Dettagli</a>
+      AUC ≈ {{ "%.2f"|format(auc) }}{% if auc < 0.6 %}: weak discrimination, the number is close to the average frequency in the
+      training data ({{ "%.0f"|format(td.prevalence * 100) }}%){% else %}; frequency of Cormack 3–4 in the
+      training data {{ "%.0f"|format(td.prevalence * 100) }}%: in another population the risk may differ{% endif %}.
+      <a href="{{ url_for('main.analytics') }}">Details</a>
     </p>
   {% endif %}
-  {% if saved_record_id %}<p class="ok">Caso salvato (n. {{ saved_record_id }}).</p>{% endif %}
+  {% if saved_record_id %}<p class="ok">Case saved (no. {{ saved_record_id }}).</p>{% endif %}
 </section>
 {% endif %}
 
@@ -66,11 +66,11 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% include "_assessment_fields.html" %}
   <p>
-    <button class="btn btn-primary" type="submit" name="action" value="predict">Calcola rischio</button>
+    <button class="btn btn-primary" type="submit" name="action" value="predict">Calculate risk</button>
     {% if current_user.is_authenticated %}
-      <button class="btn" type="submit" name="action" value="save">Calcola e salva caso in attesa</button>
+      <button class="btn" type="submit" name="action" value="save">Calculate and save as pending case</button>
     {% else %}
-      <span class="muted">Accedi per salvare il caso.</span>
+      <span class="muted">Log in to save the case.</span>
     {% endif %}
   </p>
 </form>

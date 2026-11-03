@@ -13,7 +13,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 login_manager.login_view = "main.login"
-login_manager.login_message = "Accedi per continuare."
+login_manager.login_message = "Please log in to continue."
 csrf = CSRFProtect()  # every POST needs a token, also plain HTML forms (AGENTS.md rule 3)
 
 def create_app(config_class=Config):
@@ -27,7 +27,7 @@ def create_app(config_class=Config):
     app.jinja_env.filters["exp"] = math.exp  # odds ratios from log-odds coefficients
     from app.inference import FEATURE_LABELS
     app.jinja_env.filters["feature_label"] = lambda f: FEATURE_LABELS.get(f, f)
-    app.jinja_env.filters["pct"] = lambda p, d=1: f"{p * 100:.{d}f}".replace(".", ",") + "%"  # 0.46 -> "46,0%"
+    app.jinja_env.filters["pct"] = lambda p, d=1: f"{p * 100:.{d}f}%"  # 0.46 -> "46.0%"
 
     from app import models  # noqa: F401
     from app.routes import bp as main_bp
@@ -36,12 +36,12 @@ def create_app(config_class=Config):
     @app.cli.command("make-admin")
     @click.argument("email")
     def make_admin(email):
-        """Give the admin role to a registered user: flask make-admin nome@esempio.it"""
+        """Give the admin role to a registered user: flask make-admin name@example.org"""
         user = models.User.query.filter_by(email=email).first()
         if user is None:
-            raise click.ClickException(f"Nessun utente registrato con {email}.")
+            raise click.ClickException(f"No registered user with {email}.")
         user.is_admin = True
         db.session.commit()
-        click.echo(f"{email} è ora amministratore.")
+        click.echo(f"{email} is now an administrator.")
 
     return app

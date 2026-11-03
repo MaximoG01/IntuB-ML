@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}{% if rec %}Modifica caso{% else %}Nuovo caso{% endif %} — intuB{% endblock %}
+{% block title %}{% if rec %}Edit case{% else %}New case{% endif %} — intuB{% endblock %}
 {% block content %}
 
-<h2>{% if rec %}Modifica caso n. {{ rec.id }}{% else %}Nuovo caso{% endif %}</h2>
+<h2>{% if rec %}Edit case no. {{ rec.id }}{% else %}New case{% endif %}</h2>
 
 <form method="post" novalidate>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% include "_assessment_fields.html" %}
   {% include "_outcome_fields.html" %}
   <p>
-    <button class="btn btn-primary" type="submit">Salva</button>
-    <a class="btn" href="{{ url_for('main.dashboard') }}">Annulla</a>
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('main.dashboard') }}">Cancel</a>
   </p>
 </form>
 

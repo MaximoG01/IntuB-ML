@@ -2,38 +2,38 @@
 {% block post %}
 {% set gd = teaching.gradient_descent if teaching else none %}
 {% set pred = gd.predictor if gd and gd.predictor else "Mallampati" %}
-<h2>Il modello più piccolo possibile</h2>
-<p>Una logistica con un solo predittore, {{ pred }} (standardizzato: 0 = valore medio, 1 = una deviazione standard
-  in più), ha due parametri:</p>
-<p class="formula">rischio = 1 / (1 + e<sup>−(b<sub>0</sub> + b<sub>1</sub> × {{ pred }})</sup>)</p>
+<h2>The smallest possible model</h2>
+<p>A logistic regression with a single predictor, {{ pred }} (standardized: 0 = mean value, 1 = one standard deviation
+  more), has two parameters:</p>
+<p class="formula">risk = 1 / (1 + e<sup>−(b<sub>0</sub> + b<sub>1</sub> × {{ pred }})</sup>)</p>
 <ul>
-  <li><strong>b<sub>0</sub></strong> (intercetta): fissa il rischio del paziente con valore medio;</li>
-  <li><strong>b<sub>1</sub></strong> (pendenza): quanto cambia il rischio per ogni deviazione standard del predittore.</li>
+  <li><strong>b<sub>0</sub></strong> (intercept): sets the risk of a patient with the mean value;</li>
+  <li><strong>b<sub>1</sub></strong> (slope): how much the risk changes for each standard deviation of the predictor.</li>
 </ul>
-<p>Allenare il modello vuol dire trovare i due numeri che rendono più piccolo l'<strong>errore</strong> (log-loss):
-  quanto il modello è "sorpreso", in media, dagli esiti veri. Con due soli parametri l'errore si può calcolare per
-  ogni coppia (b<sub>0</sub>, b<sub>1</sub>) e disegnare come una mappa: è la <em>superficie di errore</em>, calcolata
-  qui sui {{ gd.n if gd and gd.n else "" }} pazienti veri{% if teaching %} ({{ teaching.source }}){% endif %}.</p>
+<p>Training the model means finding the two numbers that make the <strong>error</strong> (log-loss) smallest: how
+  "surprised" the model is, on average, by the true outcomes. With only two parameters the error can be computed for
+  every pair (b<sub>0</sub>, b<sub>1</sub>) and drawn as a map: the <em>error surface</em>, computed here on
+  {{ gd.n if gd and gd.n else "" }} real patients{% if teaching %} ({{ teaching.source }}){% endif %}.</p>
 
 {% if teaching %}
 <div class="viz-root">
   <div class="gd-controls">
-    <label for="gdStep">Passo: <strong id="gdStepLabel">0</strong> / {{ gd.path|length - 1 }}</label>
+    <label for="gdStep">Step: <strong id="gdStepLabel">0</strong> / {{ gd.path|length - 1 }}</label>
     <input type="range" id="gdStep" min="0" max="{{ gd.path|length - 1 }}" value="0">
-    <button class="btn" type="button" id="gdPlay">▶ Avvia</button>
+    <button class="btn" type="button" id="gdPlay">▶ Play</button>
   </div>
   <p id="gdReadout" class="gd-readout" aria-live="polite"></p>
   <div class="gd-wrap">
-    <canvas id="gdCanvas" role="img" aria-label="Superficie di errore della logistica con il percorso della discesa del gradiente"></canvas>
+    <canvas id="gdCanvas" role="img" aria-label="Error surface of the logistic regression with the gradient descent path"></canvas>
     <div id="gdTip" class="viz-tip" hidden></div>
   </div>
-  <p class="muted small">Colore: errore (log-loss), da chiaro = basso a scuro = alto, in scala logaritmica.
-    Linea arancione: il percorso della discesa del gradiente partendo da b<sub>0</sub> = {{ gd.path[0].b0 }},
-    b<sub>1</sub> = {{ gd.path[0].b1 }}, con passo (learning rate) {{ gd.learning_rate }}.</p>
+  <p class="muted small">Colour: error (log-loss), light = low to dark = high, on a log scale.
+    Orange line: the gradient descent path starting from b<sub>0</sub> = {{ gd.path[0].b0 }},
+    b<sub>1</sub> = {{ gd.path[0].b1 }}, with step size (learning rate) {{ gd.learning_rate }}.</p>
   <details>
-    <summary>Tabella dei passi</summary>
+    <summary>Table of steps</summary>
     <div class="table-wrap"><table class="table">
-      <thead><tr><th>Passo</th><th>b<sub>0</sub></th><th>b<sub>1</sub></th><th>Errore</th></tr></thead>
+      <thead><tr><th>Step</th><th>b<sub>0</sub></th><th>b<sub>1</sub></th><th>Error</th></tr></thead>
       <tbody>{% for p in gd.path %}{% if loop.index0 % 5 == 0 or loop.last %}
         <tr><td>{{ loop.index0 }}</td><td>{{ "%.2f"|format(p.b0) }}</td><td>{{ "%.2f"|format(p.b1) }}</td><td>{{ "%.3f"|format(p.loss) }}</td></tr>
       {% endif %}{% endfor %}</tbody>
@@ -41,28 +41,28 @@
   </details>
 </div>
 
-<h2>Che cosa si vede</h2>
+<h2>What you see</h2>
 <ul>
-  <li>A ogni passo il modello calcola in che direzione l'errore scende più in fretta (il <strong>gradiente</strong>)
-    e si sposta di un piccolo tratto in quella direzione.</li>
-  <li>I primi passi sono lunghi (la superficie è ripida), poi si accorciano vicino al fondo della valle.</li>
-  <li>Il fondo è a b<sub>0</sub> ≈ {{ "%.2f"|format(gd.path[-1].b0) }}: 1/(1+e<sup>{{ "%.2f"|format(-gd.path[-1].b0) }}</sup>) ≈
-    {{ "%.0f"|format(100 / (1 + (-gd.path[-1].b0)|exp)) }}%, cioè circa la frequenza del Cormack 3–4 nel dataset
+  <li>At each step the model computes the direction in which the error falls fastest (the <strong>gradient</strong>)
+    and moves a short way in that direction.</li>
+  <li>The first steps are long (the surface is steep), then they shorten near the bottom of the valley.</li>
+  <li>The bottom is at b<sub>0</sub> ≈ {{ "%.2f"|format(gd.path[-1].b0) }}: 1/(1+e<sup>{{ "%.2f"|format(-gd.path[-1].b0) }}</sup>) ≈
+    {{ "%.0f"|format(100 / (1 + (-gd.path[-1].b0)|exp)) }}%, roughly the frequency of Cormack 3–4 in the dataset
     ({{ "%.0f"|format(gd.prevalence * 100) }}%).</li>
   {% if gd.path[-1].b1|abs < 0.25 %}
-  <li>E b<sub>1</sub> ≈ {{ "%.2f"|format(gd.path[-1].b1) }}: <strong>la valle è quasi orizzontale lungo b<sub>1</sub></strong>.
-    Cambiare il peso di {{ pred }} cambia poco l'errore, cioè in questi pazienti il predittore quasi non distingue
-    i casi difficili.</li>
+  <li>And b<sub>1</sub> ≈ {{ "%.2f"|format(gd.path[-1].b1) }}: <strong>the valley is almost flat along b<sub>1</sub></strong>.
+    Changing the weight of {{ pred }} barely changes the error: in these patients the predictor hardly separates the
+    difficult cases.</li>
   {% else %}
-  <li>E b<sub>1</sub> ≈ {{ "%.2f"|format(gd.path[-1].b1) }}: <strong>il fondo della valle è lontano da b<sub>1</sub> = 0</strong>.
-    Togliere il predittore (b<sub>1</sub> = 0) farebbe salire l'errore: {{ pred }} porta informazione sui casi difficili
-    (nello studio sugli obesi, invece, la valle era piatta lungo b<sub>1</sub>).</li>
+  <li>And b<sub>1</sub> ≈ {{ "%.2f"|format(gd.path[-1].b1) }}: <strong>the bottom of the valley is far from b<sub>1</sub> = 0</strong>.
+    Removing the predictor (b<sub>1</sub> = 0) would raise the error: {{ pred }} carries information about the difficult
+    cases (in the obese-patient study, by contrast, the valley was flat along b<sub>1</sub>).</li>
   {% endif %}
-  <li>La forma della superficie dice già quanto un predittore è informativo.</li>
+  <li>The shape of the surface already tells how informative a predictor is.</li>
 </ul>
-<p>Una rete neurale fa la stessa cosa con centinaia di parametri: la superficie non si può più disegnare, ma l'idea
-  è identica. Il rischio nuovo è che, con molti parametri e pochi pazienti, il fondo della valle corrisponda a
-  "imparare a memoria": è l'<a href="{{ url_for('main.blog_post', slug='overfitting') }}">overfitting</a>.</p>
+<p>A neural network does the same with hundreds of parameters: the surface can no longer be drawn, but the idea is the
+  same. The new risk is that, with many parameters and few patients, the bottom of the valley corresponds to "learning
+  by heart": that is <a href="{{ url_for('main.blog_post', slug='overfitting') }}">overfitting</a>.</p>
 
 <script>
 (() => {
@@ -96,11 +96,11 @@
     // axes
     ctx.fillStyle = INK; ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "center";
     for (const v of [-4, -3, -2, -1, 0, 1, 2]) ctx.fillText(v, xOf(v), H - M.b + 16);
-    ctx.fillText("b₀ (intercetta)", (M.l + W - M.r) / 2, H - 6);
+    ctx.fillText("b₀ (intercept)", (M.l + W - M.r) / 2, H - 6);
     ctx.textAlign = "right";
     for (const v of [-3, -2, -1, 0, 1, 2, 3]) ctx.fillText(v, M.l - 6, yOf(v) + 4);
     ctx.save(); ctx.translate(12, (M.t + H - M.b) / 2); ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = "center"; ctx.fillText("b₁ (peso del predittore)", 0, 0); ctx.restore();
+    ctx.textAlign = "center"; ctx.fillText("b₁ (weight of the predictor)", 0, 0); ctx.restore();
     // path: 2px line with a surface ring, marker on the current step
     const pts = GD.path.slice(0, step + 1);
     for (const [w, c] of [[5, SURFACE], [2, PATH]]) {
@@ -115,18 +115,18 @@
     document.getElementById("gdStepLabel").textContent = step;
     const risk = 100 / (1 + Math.exp(-cur.b0));
     document.getElementById("gdReadout").textContent =
-      `b₀ = ${cur.b0.toFixed(2)} · b₁ = ${cur.b1.toFixed(2)} · errore = ${cur.loss.toFixed(3)} · ` +
-      `rischio con valore medio = ${risk.toFixed(1).replace(".", ",")}%`;
+      `b₀ = ${cur.b0.toFixed(2)} · b₁ = ${cur.b1.toFixed(2)} · error = ${cur.loss.toFixed(3)} · ` +
+      `risk at the mean value = ${risk.toFixed(1)}%`;
   }
 
   slider.addEventListener("input", () => draw(+slider.value));
   let timer = null;
   document.getElementById("gdPlay").addEventListener("click", e => {
-    if (timer) { clearInterval(timer); timer = null; e.target.textContent = "▶ Avvia"; return; }
+    if (timer) { clearInterval(timer); timer = null; e.target.textContent = "▶ Play"; return; }
     if (+slider.value >= +slider.max) slider.value = 0;
-    e.target.textContent = "❚❚ Pausa";
+    e.target.textContent = "❚❚ Pause";
     timer = setInterval(() => {
-      if (+slider.value >= +slider.max) { clearInterval(timer); timer = null; e.target.textContent = "▶ Avvia"; return; }
+      if (+slider.value >= +slider.max) { clearInterval(timer); timer = null; e.target.textContent = "▶ Play"; return; }
       slider.value = +slider.value + 1; draw(+slider.value);
     }, 120);
   });
@@ -136,7 +136,7 @@
     if (i < 0 || j < 0 || i >= nx || j >= ny) { tip.hidden = true; return; }
     tip.hidden = false;
     tip.style.left = Math.min(x + 12, W - 150) + "px"; tip.style.top = (y + 12) + "px";
-    tip.textContent = `b₀ ${GD.b0[i].toFixed(2)} · b₁ ${GD.b1[j].toFixed(2)} · errore ${GD.loss[j][i].toFixed(3)}`;
+    tip.textContent = `b₀ ${GD.b0[i].toFixed(2)} · b₁ ${GD.b1[j].toFixed(2)} · error ${GD.loss[j][i].toFixed(3)}`;
   });
   cv.addEventListener("mouseleave", () => { tip.hidden = true; });
   window.addEventListener("resize", () => draw(+slider.value));
@@ -144,10 +144,10 @@
 })();
 </script>
 {% else %}
-<p class="muted">Dati non disponibili: lancia <code>python -m training.run_laryngoscope</code>.</p>
+<p class="muted">Data not available: run <code>python -m training.run_decassai</code>.</p>
 {% endif %}
 {% endblock %}
 {% block references %}
-<li>Dati: {{ teaching.source if teaching else "medicaldata::laryngoscope" }}.</li>
+<li>Data: {{ teaching.source if teaching else "not available" }}.</li>
 <li>Goodfellow I, Bengio Y, Courville A. Deep Learning, cap. 4 e 8. MIT Press 2016.</li>
 {% endblock %}

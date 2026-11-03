@@ -80,9 +80,9 @@ Contenuti didattici (ex Blog) + grafici che spiegano l'allenamento:
 
 ## 6. Stile
 
-- Una sola lingua: **italiano** (eventuale inglese più avanti con file di traduzione).
+- Una sola lingua per l'interfaccia: **inglese** (decisione del 03/11/2026; prima era italiano). Numeri con il punto decimale.
 - Colori: un colore per "sopra soglia" (arancio/rosso) e uno per "sotto soglia" (blu/verde);
   mai solo il colore per comunicare (aggiungere testo e icona). Contrasto AA.
 - Una libreria grafica sola (Chart.js, già usato); stessi colori per lo stesso modello in tutti i grafici.
 - Mobile first: il clinico usa spesso il telefono.
-- Numeri con la virgola decimale e unità sempre visibili (cm, kg, %).
+- Unità sempre visibili (cm, kg, %).

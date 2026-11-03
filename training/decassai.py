@@ -15,7 +15,7 @@ import pandas as pd
 
 URL = "https://journals.plos.org/plosone/article/file?type=supplementary&id=10.1371/journal.pone.0212976.s004"
 DEFAULT_PATH = Path(__file__).resolve().parent.parent / "data" / "external" / "decassai2019" / "S1_Database.xlsx"
-SOURCE = "De Cassai et al., PLoS ONE 2019 (Padova, chirurgia tiroidea; CC-BY 4.0)"
+SOURCE = "De Cassai et al., PLoS ONE 2019 (Padova, thyroid surgery; CC-BY 4.0)"
 
 FEATURES = ["mallampati_ge3", "mouth_lt4", "dtm", "neck_limited", "no_prognath", "history_difficult_any", "bmi"]
 

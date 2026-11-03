@@ -1,0 +1,46 @@
+{% extends "learn/_post.html" %}
+{% block post %}
+<h2>What we want to predict</h2>
+<p>Before induction we want to know whether <strong>direct laryngoscopy</strong> will give a poor view of the glottis,
+  so that a video laryngoscope, a bougie, a second operator or an awake strategy can be prepared in advance.
+  The project's outcome is the <strong>Cormack-Lehane</strong> grade:</p>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Grade</th><th>What is seen</th><th>In the project</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>most of the glottis</td><td rowspan="2">easy (0)</td></tr>
+    <tr><td>2</td><td>only the posterior part of the glottis</td></tr>
+    <tr><td>3</td><td>only the epiglottis</td><td rowspan="2"><strong>difficult (1)</strong></td></tr>
+    <tr><td>4</td><td>neither glottis nor epiglottis</td></tr>
+  </tbody>
+</table>
+</div>
+<p>The Cormack grade depends <strong>on the device</strong>: with a video laryngoscope the same person often has a better
+  grade than with a Macintosh blade. This is why a Cormack grade must always be recorded together with the device, and
+  two grades obtained with different devices are not the same outcome.</p>
+
+<h2>Bedside signs</h2>
+<p>No single sign predicts difficult laryngoscopy well. The best known is the <strong>Mallampati</strong> class
+  (1–4: how much of the soft palate, uvula and pillars can be seen with the mouth open). Others: thyromental distance,
+  mouth opening, neck movement, ability to protrude the jaw, weight, history of difficult intubation.</p>
+
+<h2>The El-Ganzouri index (1996)</h2>
+<p>El-Ganzouri and colleagues combined 7 of these signs into a score from 0 to 12, positive if ≥ 4. It was built on more
+  than 10,000 patients, but with a different outcome from ours: grade IV only (about 1% of cases). Its weights are
+  therefore not "tuned" to Cormack 3–4. The <a href="{{ url_for('main.predict') }}">Assess</a> page computes it from
+  the raw items.</p>
+
+<h2>Why the population matters</h2>
+<p>The frequency of Cormack 3–4 changes a lot between populations: in VitalDB (general surgery, Korea) it was 2.5%; in the
+  500 thyroid-surgery patients from Padova 9.6%; in the 99 obese patients 18%. A model trained where the outcome is rare
+  underestimates the risk where it is common: you can see it in the results pages
+  (<a href="{{ url_for('main.blog_post', slug='obese-study') }}">obese</a>,
+  <a href="{{ url_for('main.blog_post', slug='thyroid-study') }}">thyroid</a>).</p>
+{% endblock %}
+{% block references %}
+<li>Cormack RS, Lehane J. Difficult tracheal intubation in obstetrics. Anaesthesia 1984;39:1105-11.</li>
+<li>Mallampati SR et al. A clinical sign to predict difficult tracheal intubation. Can Anaesth Soc J 1985;32:429-34;
+  class 4 added by Samsoon GL, Young JR. Anaesthesia 1987;42:487-90.</li>
+<li>El-Ganzouri AR et al. Preoperative airway assessment: predictive value of a multivariate risk index.
+  Anesth Analg 1996;82:1197-204.</li>
+{% endblock %}

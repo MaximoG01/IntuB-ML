@@ -1,0 +1,79 @@
+{% extends "learn/_post.html" %}
+{% block post %}
+{% if model %}{% set td = model.training_data %}{% set prev = td.prevalence %}{% endif %}
+
+<h2>Why not accuracy</h2>
+<p>If 18% of patients have Cormack 3–4, a "model" that always answers <em>easy</em> has 82% accuracy and is useless.
+  With uncommon outcomes, accuracy rewards ignoring the very cases we care about. Four other things are checked
+  instead.</p>
+
+<h2>1. Discrimination: the AUC</h2>
+<p>Pick at random one patient with Cormack 3–4 and one with Cormack 1–2: the AUC is the probability that the model gives
+  the first a higher risk. 0.5 = coin toss; 1 = perfect. In clinical practice 0.7 is modest, 0.8 good.
+  The AUC <strong>does not say whether the numbers are right</strong>, only whether the order is right.</p>
+
+<h2>2. Calibration: are the numbers true?</h2>
+<p>If the model says 20% to a hundred patients, about twenty should have Cormack 3–4. It is checked with the
+  predicted/observed chart and two numbers:</p>
+<ul>
+  <li><strong>calibration-in-the-large</strong>: mean predicted risk versus observed frequency;</li>
+  <li><strong>calibration slope</strong>: 1 is ideal; below 1 predictions are too extreme (typical of overfitting),
+    above 1 too timid.</li>
+</ul>
+<p>With a probability threshold, calibration is decisive: a model that ranks well but gets the numbers wrong puts the
+  wrong people above or below the threshold.</p>
+
+<h2>3. The 15% threshold</h2>
+<p>"I prepare plan B if the risk is at least 15%" means accepting about 6 unnecessary preparations for every difficult
+  laryngoscopy found (0.85 / 0.15 ≈ 5.7). It is a clinical choice, not a statistical one: preparing a video laryngoscope
+  costs little, not having it costs a lot. At the threshold we report sensitivity, specificity, predictive values and
+  the share of flagged patients.</p>
+
+<h2>4. Decision curve: is it really useful?</h2>
+<p>The <strong>net benefit</strong> at a threshold <em>p</em> counts true positives and subtracts false positives
+  weighted by <em>p</em>/(1−<em>p</em>):</p>
+<p class="formula">net benefit = TP/<em>n</em> − FP/<em>n</em> × <em>p</em>/(1 − <em>p</em>)</p>
+<p>A model is useful only if it lies above the two trivial strategies: <em>always prepare</em> and <em>never prepare</em>
+  (zero benefit).</p>
+{% if model and model.validation.dca_reference %}
+  {% set ref = model.validation.dca_reference %}
+  {% set k = ref.thresholds.index(model.threshold) %}
+  {% set r = model.validation.results[model.primary or "Penalized logistic (L2)"] %}
+  <div class="card">
+    <p><strong>With the project's data</strong> ({{ td.source }}, frequency {{ "%.0f"|format(prev * 100) }}%) at the
+      {{ "%.0f"|format(model.threshold * 100) }}% threshold:</p>
+    <ul>
+      <li>always prepare: net benefit {{ "%.3f"|format(ref.treat_all[k]) }};</li>
+      <li>active model: {{ "%.3f"|format(r.dca.net_benefit[k]) }};</li>
+      <li>never: 0.</li>
+    </ul>
+    {% if prev >= model.threshold %}
+    <p>When the outcome frequency is already above the threshold, "always prepare" is hard to beat: a model helps only
+      if it reliably finds the <em>low</em>-risk patients.</p>
+    {% else %}
+    <p>With the frequency below the threshold, "always prepare" costs more than it returns: the model is useful if it
+      finds the few high-risk patients without flagging too many.</p>
+    {% endif %}
+  </div>
+{% endif %}
+
+<h2>How to estimate them honestly</h2>
+<p>Metrics computed on the same patients used to train the model are optimistic. Two ways to correct them:</p>
+<ul>
+  <li><strong>cross-validation</strong>: train on 4/5 of the patients and evaluate on the fifth left out, in turn,
+    repeating several times; every preprocessing step (imputation, standardization) is fitted on the training part
+    only;</li>
+  <li><strong>bootstrap optimism correction</strong> (Harrell): measure how much better a model trained on a bootstrap
+    sample looks on that sample than on the original data, and subtract it. With few patients it is the recommended
+    method.</li>
+</ul>
+<p>With very few events even cross-validation has traps: in our obese-patient study the "null" model, which gives
+  everyone the same risk, came out with AUC 0.31 instead of 0.50, because the frequency in the training folds changes
+  slightly from fold to fold. This is why the AUC is computed within each fold.</p>
+{% endblock %}
+{% block references %}
+<li>Vickers AJ, Elkin EB. Decision curve analysis. Med Decis Making 2006;26:565-74.</li>
+<li>Van Calster B et al. Calibration: the Achilles heel of predictive analytics. BMC Med 2019;17:230.</li>
+<li>Steyerberg EW. Clinical Prediction Models. 2nd ed. Springer 2019.</li>
+<li>Collins GS et al. TRIPOD+AI statement. BMJ 2024;385:e078378.</li>
+{% endblock %}

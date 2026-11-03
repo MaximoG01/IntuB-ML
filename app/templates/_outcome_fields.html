@@ -5,27 +5,27 @@
 {% set device_v = f.get('cormack_device', r.cormack_device if r and r.cormack_device else '') %}
 {% set success_v = f.get('success', ('1' if r and r.success else '0' if r and r.success is sameas false else '')) %}
 <fieldset class="form-section">
-  <legend>Esito</legend>
+  <legend>Outcome</legend>
   <div class="form-grid">
     <div><label for="cormack">Cormack-Lehane</label>
       <select name="cormack" id="cormack">
-        <option value="">— non ancora</option>
+        <option value="">— not yet</option>
         {% for g in ["1", "2", "3", "4"] %}
           <option value="{{ g }}" {% if cormack_v == g %}selected{% endif %}>{{ g }}</option>
         {% endfor %}
       </select></div>
-    <div><label for="cormack_device">Visto con</label>
+    <div><label for="cormack_device">Seen with</label>
       <select name="cormack_device" id="cormack_device">
         <option value="">—</option>
-        <option value="DL" {% if device_v == 'DL' %}selected{% endif %}>Lama diretta (Macintosh)</option>
-        <option value="VL" {% if device_v == 'VL' %}selected{% endif %}>Videolaringoscopio</option>
+        <option value="DL" {% if device_v == 'DL' %}selected{% endif %}>Direct blade (Macintosh)</option>
+        <option value="VL" {% if device_v == 'VL' %}selected{% endif %}>Video laryngoscope</option>
       </select></div>
-    <div><label for="success">Intubazione riuscita</label>
+    <div><label for="success">Intubation successful</label>
       <select name="success" id="success">
         <option value="">—</option>
-        <option value="1" {% if success_v == '1' %}selected{% endif %}>Sì</option>
+        <option value="1" {% if success_v == '1' %}selected{% endif %}>Yes</option>
         <option value="0" {% if success_v == '0' %}selected{% endif %}>No</option>
       </select></div>
   </div>
-  <p class="muted">Difficile = Cormack 3 o 4. Il grado con videolaringoscopio non è confrontabile con la lama diretta: indicalo sempre.</p>
+  <p class="muted">Difficult = Cormack 3 or 4. The grade with a video laryngoscope is not comparable with a direct blade: always record the device.</p>
 </fieldset>

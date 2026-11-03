@@ -1,55 +1,55 @@
 {% extends "base.html" %}
-{% block title %}Modello — intuB{% endblock %}
+{% block title %}Model — intuB{% endblock %}
 {% block content %}
 
-<h2>Il modello</h2>
+<h2>The model</h2>
 
 {% if not model %}
-  <div class="flash flash-warning">Nessun modello attivo. Allenalo in locale con
-    <code>python -m training.run_laryngoscope</code> (vedi README).</div>
+  <div class="flash flash-warning">No active model. Train it locally with
+    <code>python -m training.run_decassai</code> (see README).</div>
 {% else %}
 {% set td = model.training_data %}
 {% set v = model.validation %}
 {% set res = v.results %}
-{% set primary = model.primary or "Logistica penalizzata (L2)" %}
+{% set primary = model.primary or "Penalized logistic (L2)" %}
 {% set thr = (model.threshold * 100)|round|int %}
 <section class="card">
-  <p><strong>{{ model.name }}</strong> · creato il {{ model.created }} · regressione logistica penalizzata</p>
-  <p>Dati: {{ td.source }} — {{ td.n }} pazienti{% if td.population %} ({{ td.population }}){% endif %},
-    {{ td.events }} con Cormack 3–4 ({{ (td.prevalence * 100)|round(1) }}%).
-    Variabili: {{ model.features|map("feature_label")|join(", ") }}.</p>
+  <p><strong>{{ model.name }}</strong> · created {{ model.created }} · penalized logistic regression</p>
+  <p>Data: {{ td.source }} — {{ td.n }} patients{% if td.population %} ({{ td.population }}){% endif %},
+    {{ td.events }} with Cormack 3–4 ({{ (td.prevalence * 100)|round(1) }}%).
+    Variables: {{ model.features|map("feature_label")|join(", ") }}.</p>
   {% if model.limitations %}
-    <p class="warn"><strong>Limiti:</strong></p>
+    <p class="warn"><strong>Limitations:</strong></p>
     <ul>{% for l in model.limitations %}<li>{{ l|replace("**", "") }}</li>{% endfor %}</ul>
   {% endif %}
-  <p class="muted small">Validazione: {{ v.method }}. Tra parentesi: intervallo 2,5–97,5% tra le ripetizioni.</p>
+  <p class="muted small">Validation: {{ v.method }}. In brackets: 2.5–97.5% range across repeats.</p>
 </section>
 
-<h3>1. Calibrazione — il rischio previsto corrisponde a quello osservato?</h3>
-<p class="muted">Ogni punto è un gruppo di pazienti, ordinati per rischio previsto. Sulla diagonale = calibrazione perfetta.
-  È il grafico più importante quando si usa una soglia di probabilità.</p>
+<h3>1. Calibration — does the predicted risk match the observed one?</h3>
+<p class="muted">Each point is a group of patients, sorted by predicted risk. On the diagonal = perfect calibration.
+  It is the most important chart when a probability threshold is used.</p>
 <div class="chart"><canvas id="calChart"></canvas></div>
 
-<h3>2. Discriminazione (curva ROC)</h3>
-<p class="muted">Quanto il modello distingue i casi difficili da quelli facili. Diagonale = caso (AUC 0,5).</p>
+<h3>2. Discrimination (ROC curve)</h3>
+<p class="muted">How well the model separates difficult from easy cases. Diagonal = chance (AUC 0.5).</p>
 <div class="chart"><canvas id="rocChart"></canvas></div>
 
-<h3>3. Utilità clinica (decision curve)</h3>
-<p class="muted">Beneficio netto al variare della soglia, rispetto a "prepara sempre il piano B" e "mai".
-  Un modello utile sta sopra entrambe le linee di riferimento.</p>
+<h3>3. Clinical usefulness (decision curve)</h3>
+<p class="muted">Net benefit across thresholds, compared with "always prepare plan B" and "never".
+  A useful model lies above both reference lines.</p>
 <div class="chart"><canvas id="dcaChart"></canvas></div>
 
-<h3>4. Confronto tra modelli (stessi fold, stesse metriche)</h3>
+<h3>4. Model comparison (same folds, same metrics)</h3>
 <div class="table-wrap">
 <table class="table">
-  <thead><tr><th>Modello</th><th>AUC</th><th>Brier</th>
-    <th>Sensibilità @{{ thr }}%</th><th>Segnalati @{{ thr }}%</th></tr></thead>
+  <thead><tr><th>Model</th><th>AUC</th><th>Brier</th>
+    <th>Sensitivity @{{ thr }}%</th><th>Flagged @{{ thr }}%</th></tr></thead>
   <tbody>
   {% for name, r in res.items() %}
     {% set m = r.metrics %}
     {% set auc = r.auc_fold or m.auc %}
     <tr {% if name == primary %}class="row-active"{% endif %}>
-      <td>{{ name }}{% if name == primary %} ◀ attivo{% endif %}</td>
+      <td>{{ name }}{% if name == primary %} ◀ active{% endif %}</td>
       <td>{{ "%.2f"|format(auc.mean) }} <span class="muted">({{ "%.2f"|format(auc.lo) }}–{{ "%.2f"|format(auc.hi) }})</span></td>
       <td>{{ "%.3f"|format(m.brier.mean) }}</td>
       <td>{{ "%.0f"|format(m.sensitivity.mean * 100) }}%</td>
@@ -59,18 +59,18 @@
   </tbody>
 </table>
 </div>
-<p class="muted small">Il modello attivo è stato scelto <em>prima</em> di vedere i risultati (logistica: interpretabile e calibrata).
-  {% if res|length and (res.values()|first).auc_fold %}AUC calcolata dentro ogni fold (con pochi eventi l'AUC sulle predizioni riunite è falsata verso il basso).{% endif %}</p>
+<p class="muted small">The active model was chosen <em>before</em> seeing the results (logistic: interpretable and calibrated).
+  {% if res|length and (res.values()|first).auc_fold %}AUC computed within each fold (with few events the AUC of pooled predictions is biased downwards).{% endif %}</p>
 
 {% if v.optimism %}
-<h3>5. Quanto è ottimista il modello? (bootstrap di Harrell)</h3>
-<p class="muted">Un modello sembra sempre migliore sui dati su cui è stato allenato. Il bootstrap stima di quanto, e lo sottrae.
-  Una pendenza di calibrazione corretta molto sotto 1 vuol dire overfitting: le predizioni sono troppo estreme.</p>
+<h3>5. How optimistic is the model? (Harrell's bootstrap)</h3>
+<p class="muted">A model always looks better on the data it was trained on. The bootstrap estimates by how much, and subtracts it.
+  A corrected calibration slope well below 1 means overfitting: predictions are too extreme.</p>
 <div class="table-wrap">
 <table class="table">
-  <thead><tr><th>Modello</th><th>AUC apparente</th><th>AUC corretta</th><th>Pendenza corretta</th></tr></thead>
+  <thead><tr><th>Model</th><th>Apparent AUC</th><th>Corrected AUC</th><th>Corrected slope</th></tr></thead>
   <tbody>
-    {% for title, o in [("Logistica penalizzata (attivo)", v.optimism), ("Logistica senza penalizzazione", v.optimism_unpenalized)] if o %}
+    {% for title, o in [("Penalized logistic (active)", v.optimism), ("Unpenalized logistic", v.optimism_unpenalized)] if o %}
     <tr><td>{{ title }}</td><td>{{ "%.2f"|format(o.auc.apparent) }}</td><td>{{ "%.2f"|format(o.auc.corrected) }}</td>
       <td>{{ "%.2f"|format(o.cal_slope.corrected) }}</td></tr>
     {% endfor %}
@@ -78,62 +78,62 @@
 </table>
 </div>
 {% if v.optimism.cal_slope.corrected > 3 %}
-<p class="muted small">La pendenza del modello penalizzato non è interpretabile: le sue predizioni sono quasi uguali per tutti.</p>
+<p class="muted small">The slope of the penalized model cannot be interpreted: its predictions are almost the same for everyone.</p>
 {% elif v.optimism.cal_slope.corrected > 1 %}
-<p class="muted small">Pendenza corretta sopra 1: la penalizzazione è stata un po' prudente (predizioni leggermente troppo vicine alla media), nessun overfitting.</p>
+<p class="muted small">Corrected slope above 1: the penalty was slightly cautious (predictions a little too close to the mean), no overfitting.</p>
 {% endif %}
 {% endif %}
 
-<h3>6. Coefficienti (odds ratio per una deviazione standard)</h3>
+<h3>6. Coefficients (odds ratio per standard deviation)</h3>
 <ul>
   {% for f, c in model.coef.items() %}
     <li>{{ f|feature_label }}: OR {{ "%.2f"|format(c|exp) }}
-      {% if model.coef_ci %}<span class="muted">(IC 95% {{ "%.2f"|format(model.coef_ci[f].lo|exp) }}–{{ "%.2f"|format(model.coef_ci[f].hi|exp) }})</span>{% endif %}</li>
+      {% if model.coef_ci %}<span class="muted">(95% CI {{ "%.2f"|format(model.coef_ci[f].lo|exp) }}–{{ "%.2f"|format(model.coef_ci[f].hi|exp) }})</span>{% endif %}</li>
   {% endfor %}
 </ul>
 
 {% if v.sample_size or v.external_vitaldb or v.sensitivity_macintosh or v.egri_rule %}
-<h3>7. Confronti e analisi secondarie</h3>
+<h3>7. Comparisons and secondary analyses</h3>
 <ul>
   {% if v.egri_rule %}{% set m0 = v.egri_rule %}
-    <li><strong>El-Ganzouri ≥ 4 come regola fissa</strong> (il riferimento clinico): AUC {{ "%.2f"|format(m0.auc) }},
-      sensibilità {{ "%.0f"|format(m0.sensitivity * 100) }}%, specificità {{ "%.0f"|format(m0.specificity * 100) }}%,
-      segnalati {{ "%.0f"|format(m0.flagged * 100) }}%.</li>
+    <li><strong>El-Ganzouri ≥ 4 as a fixed rule</strong> (the clinical reference): AUC {{ "%.2f"|format(m0.auc) }},
+      sensitivity {{ "%.0f"|format(m0.sensitivity * 100) }}%, specificity {{ "%.0f"|format(m0.specificity * 100) }}%,
+      flagged {{ "%.0f"|format(m0.flagged * 100) }}%.</li>
   {% endif %}
   {% if v.thyroid_model %}
-    <li><strong>+ circonferenza del collo</strong> (solo tiroide): AUC {{ "%.2f"|format(v.thyroid_model.auc_fold.mean) }},
-      corretta {{ "%.2f"|format(v.thyroid_model.optimism.auc.corrected) }}.</li>
+    <li><strong>+ neck circumference</strong> (thyroid only): AUC {{ "%.2f"|format(v.thyroid_model.auc_fold.mean) }},
+      corrected {{ "%.2f"|format(v.thyroid_model.optimism.auc.corrected) }}.</li>
   {% endif %}
   {% if v.sensitivity_macintosh %}{% set s = v.sensitivity_macintosh %}
-    <li><strong>Solo lama Macintosh</strong> ({{ s.n }} pazienti, {{ s.events }} eventi): AUC {{ "%.2f"|format(s.auc_fold.mean) }}.</li>
+    <li><strong>Macintosh blade only</strong> ({{ s.n }} patients, {{ s.events }} events): AUC {{ "%.2f"|format(s.auc_fold.mean) }}.</li>
   {% endif %}
   {% if v.external_vitaldb %}{% set e = v.external_vitaldb %}
-    <li><strong>Il modello VitalDB su questi pazienti</strong>: AUC {{ "%.2f"|format(e.auc_ci.auc) }}
+    <li><strong>The VitalDB model on these patients</strong>: AUC {{ "%.2f"|format(e.auc_ci.auc) }}
       (IC 95% {{ "%.2f"|format(e.auc_ci.lo) }}–{{ "%.2f"|format(e.auc_ci.hi) }}); prevede in media
-      {{ "%.1f"|format(e.mean_predicted * 100) }}% contro {{ "%.1f"|format(e.observed * 100) }}% osservato.
-      Un modello allenato dove l'esito è raro sottostima il rischio dove è frequente.</li>
+      {{ "%.1f"|format(e.mean_predicted * 100) }}% vs {{ "%.1f"|format(e.observed * 100) }}% observed.
+      A model trained where the outcome is rare underestimates the risk where it is common.</li>
   {% endif %}
   {% if v.sample_size %}{% set n = v.sample_size %}
-    <li><strong>Numerosità minima</strong> (Riley, BMJ 2020) per {{ model.features|length }} predittori:
-      {{ n.n_required }} pazienti ({{ n.events_required }} eventi). Disponibili: {{ td.n }} ({{ td.events }}).</li>
+    <li><strong>Minimum sample size</strong> (Riley, BMJ 2020) for {{ model.features|length }} predictors:
+      {{ n.n_required }} patients ({{ n.events_required }} events). Available: {{ td.n }} ({{ td.events }}).</li>
   {% endif %}
 </ul>
 {% endif %}
 
 {% if model.probast %}
-<h3>8. Rischio di bias (PROBAST)</h3>
-<p class="muted">{{ model.probast.tool }}. Per ogni dominio: rischio che le stime siano distorte e quanto i dati
-  rispondono alla nostra domanda clinica. <a href="{{ url_for('main.blog_post', slug='bias-probast') }}">Come si legge</a></p>
+<h3>8. Risk of bias (PROBAST)</h3>
+<p class="muted">{{ model.probast.tool }}. For each domain: risk that the estimates are distorted, and how well the data
+  answer our clinical question. <a href="{{ url_for('main.blog_post', slug='bias-probast') }}">How to read it</a></p>
 <div class="table-wrap">
 <table class="table">
-  <thead><tr><th>Dominio</th><th>Rischio di bias</th><th>Applicabilità (preoccupazione)</th></tr></thead>
+  <thead><tr><th>Domain</th><th>Risk of bias</th><th>Applicability (concern)</th></tr></thead>
   <tbody>
     {% for d in model.probast.domains %}
     <tr><td>{{ d.domain }}</td>
       <td><strong>{{ d.risk }}</strong><br><span class="muted small">{{ d.why }}</span></td>
       <td>{% if d.applicability %}<strong>{{ d.applicability }}</strong><br><span class="muted small">{{ d.applicability_why }}</span>{% else %}—{% endif %}</td></tr>
     {% endfor %}
-    <tr class="row-active"><td>Complessivo</td><td><strong>{{ model.probast.overall.risk }}</strong></td>
+    <tr class="row-active"><td>Overall</td><td><strong>{{ model.probast.overall.risk }}</strong></td>
       <td><strong>{{ model.probast.overall.applicability }}</strong></td></tr>
   </tbody>
 </table>
@@ -149,9 +149,9 @@
   // past three hues crossing lines are no longer distinguishable: the rest are dark gray + dash
   const SLOTS = ["#eb6834", "#1baf7a", "#52514e"];
   const DASH = n => (others.indexOf(n) >= 2 ? [6, 4] : []);
-  const others = Object.keys(RES).filter(n => n !== ACTIVE && !n.startsWith("Nessun"));
+  const others = Object.keys(RES).filter(n => n !== ACTIVE && !n.startsWith("No model"));
   const COLORS = Object.fromEntries([[ACTIVE, "#2a78d6"], ...others.map((n, i) => [n, SLOTS[i % SLOTS.length]]),
-    ...Object.keys(RES).filter(n => n.startsWith("Nessun")).map(n => [n, "#9aa5b1"])]);
+    ...Object.keys(RES).filter(n => n.startsWith("No model")).map(n => [n, "#9aa5b1"])]);
   const auc = r => (r.auc_fold || r.metrics.auc).mean;
   const lin = (title, max) => ({ type: "linear", min: 0, max: max, title: { display: true, text: title } });
 
@@ -160,46 +160,46 @@
   new Chart(document.getElementById("calChart"), {
     type: "scatter",
     data: { datasets: [
-      { label: "Modello attivo", data: cal.map(p => ({ x: p.pred, y: p.obs })), backgroundColor: COLORS[ACTIVE], pointRadius: 5 },
-      { label: "Calibrazione perfetta", type: "line", data: [{x: 0, y: 0}, {x: calMax, y: calMax}],
+      { label: "Active model", data: cal.map(p => ({ x: p.pred, y: p.obs })), backgroundColor: COLORS[ACTIVE], pointRadius: 5 },
+      { label: "Perfect calibration", type: "line", data: [{x: 0, y: 0}, {x: calMax, y: calMax}],
         borderColor: "#9aa5b1", borderDash: [6, 6], pointRadius: 0 }
     ]},
-    options: { maintainAspectRatio: false, scales: { x: lin("Rischio previsto", calMax), y: lin("Rischio osservato", calMax) } }
+    options: { maintainAspectRatio: false, scales: { x: lin("Predicted risk", calMax), y: lin("Observed risk", calMax) } }
   });
 
   new Chart(document.getElementById("rocChart"), {
     type: "line",
-    data: { datasets: Object.entries(RES).filter(([n]) => !n.startsWith("Nessun")).map(([n, r]) => ({
+    data: { datasets: Object.entries(RES).filter(([n]) => !n.startsWith("No model")).map(([n, r]) => ({
         label: n + " (AUC " + auc(r).toFixed(2) + ")",
         data: r.roc.fpr.map((x, i) => ({ x: x, y: r.roc.tpr[i] })),
         borderColor: COLORS[n], borderWidth: n === ACTIVE ? 3 : 2, borderDash: DASH(n), pointRadius: 0
-      })).concat([{ label: "Caso", data: [{x: 0, y: 0}, {x: 1, y: 1}], borderColor: "#9aa5b1", borderDash: [6, 6], pointRadius: 0 }]) },
+      })).concat([{ label: "Chance", data: [{x: 0, y: 0}, {x: 1, y: 1}], borderColor: "#9aa5b1", borderDash: [6, 6], pointRadius: 0 }]) },
     options: { maintainAspectRatio: false, parsing: false,
-      scales: { x: lin("1 − specificità (falsi positivi)", 1), y: lin("Sensibilità", 1) } }
+      scales: { x: lin("1 − specificity (false positives)", 1), y: lin("Sensitivity", 1) } }
   });
 
   const t = REF.thresholds;
   new Chart(document.getElementById("dcaChart"), {
     type: "line",
     data: { labels: t.map(x => Math.round(x * 100) + "%"), datasets: [
-      { label: "Modello attivo", data: RES[ACTIVE].dca.net_benefit, borderColor: COLORS[ACTIVE], borderWidth: 3, pointRadius: 0 },
-      { label: "Prepara sempre", data: REF.treat_all, borderColor: "#c2410c", borderDash: [4, 4], pointRadius: 0 },
-      { label: "Mai", data: REF.treat_none, borderColor: "#9aa5b1", pointRadius: 0 }
+      { label: "Active model", data: RES[ACTIVE].dca.net_benefit, borderColor: COLORS[ACTIVE], borderWidth: 3, pointRadius: 0 },
+      { label: "Always prepare", data: REF.treat_all, borderColor: "#c2410c", borderDash: [4, 4], pointRadius: 0 },
+      { label: "Never", data: REF.treat_none, borderColor: "#9aa5b1", pointRadius: 0 }
     ]},
     options: { maintainAspectRatio: false, scales: {
-      x: { title: { display: true, text: "Soglia di rischio" } },
-      y: { title: { display: true, text: "Beneficio netto" } } } }
+      x: { title: { display: true, text: "Risk threshold" } },
+      y: { title: { display: true, text: "Net benefit" } } } }
   });
 </script>
 {% endif %}
 
 <hr>
-<h3>Casi raccolti in questa app</h3>
-<p>Casi con esito registrato: <strong>{{ n_labeled }}</strong>.</p>
+<h3>Cases collected in this app</h3>
+<p>Cases with a recorded outcome: <strong>{{ n_labeled }}</strong>.</p>
 {% if local_metrics %}
-  <p class="muted">Controllo rapido (logistica sui casi locali, 25% tenuto da parte):
-    AUC {{ "%.2f"|format(local_metrics.auc) if local_metrics.auc else "n/d" }} su {{ local_metrics.n_samples }} casi.
-    Non sostituisce la validazione offline.</p>
+  <p class="muted">Quick check (logistic on local cases, 25% held out):
+    AUC {{ "%.2f"|format(local_metrics.auc) if local_metrics.auc else "n/a" }} on {{ local_metrics.n_samples }} cases.
+    It does not replace offline validation.</p>
 {% else %}
   <p class="muted">{{ local_error }}</p>
 {% endif %}

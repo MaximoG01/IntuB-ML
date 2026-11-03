@@ -1,44 +1,44 @@
 {% extends "base.html" %}
-{% block title %}Variabili aggiuntive — intuB{% endblock %}
+{% block title %}Extra variables — intuB{% endblock %}
 {% block content %}
 
-<h2>Variabili aggiuntive</h2>
-<p class="muted">Variabili nuove da raccogliere nel form <a href="{{ url_for('main.predict') }}">Valuta</a>
-  (es. circonferenza del collo, upper lip bite test). Solo numeri con unità o scelte da una lista: niente testo libero,
-  così nessuno può scrivere dati che identificano il paziente. Una variabile non si cancella: si disattiva, e i valori
-  già raccolti restano.</p>
+<h2>Extra variables</h2>
+<p class="muted">New variables to collect in the <a href="{{ url_for('main.predict') }}">Assess</a> form
+  (e.g. neck circumference, upper lip bite test). Only numbers with a unit or choices from a list: no free text,
+  so nobody can type data that identify the patient. A variable is never deleted: it is deactivated, and the values
+  already collected are kept.</p>
 
 <div class="table-wrap">
 <table class="table">
-  <thead><tr><th>Variabile</th><th>Nome nell'export</th><th>Tipo</th><th>Valori ammessi</th><th>Casi compilati</th><th>Stato</th></tr></thead>
+  <thead><tr><th>Variable</th><th>Name in the export</th><th>Type</th><th>Allowed values</th><th>Cases filled in</th><th>Status</th></tr></thead>
   <tbody>
   {% for f in fields %}
     <tr>
       <td>{{ f.label }}{% if f.help_text %}<br><span class="muted small">{{ f.help_text }}</span>{% endif %}</td>
       <td><code>x_{{ f.key }}</code></td>
-      <td>{{ "numero" if f.kind == "number" else "scelta" }}</td>
+      <td>{{ "number" if f.kind == "number" else "choice" }}</td>
       <td>{% if f.kind == "number" %}{{ "%g"|format(f.min_value) if f.min_value is not none else "" }}–{{ "%g"|format(f.max_value) if f.max_value is not none else "" }} {{ f.unit or "" }}
           {% else %}{{ f.choice_list|join(" · ") }}{% endif %}</td>
       <td>{{ counts.get(f.id, 0) }}</td>
       <td>
-        {{ "attiva" if f.active else "disattivata" }}
+        {{ "active" if f.active else "deactivated" }}
         {% if current_user.is_admin %}
           <form method="post" action="{{ url_for('main.toggle_custom_field', field_id=f.id) }}" class="inline-form">
             {{ toggle.hidden_tag() }}
-            <button class="btn btn-small" type="submit">{{ "Disattiva" if f.active else "Riattiva" }}</button>
+            <button class="btn btn-small" type="submit">{{ "Deactivate" if f.active else "Reactivate" }}</button>
           </form>
         {% endif %}
       </td>
     </tr>
   {% else %}
-    <tr><td colspan="6" class="muted">Nessuna variabile aggiuntiva.</td></tr>
+    <tr><td colspan="6" class="muted">No extra variables.</td></tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
 
 {% if current_user.is_admin %}
-<h3>Aggiungi una variabile</h3>
+<h3>Add a variable</h3>
 <form method="post" novalidate class="form-section">
   {{ form.hidden_tag() }}
   <div class="form-grid">
@@ -47,14 +47,14 @@
         {% for e in field.errors %}<div class="flash flash-danger">{{ e }}</div>{% endfor %}</div>
     {% endfor %}
   </div>
-  <p class="muted small">Se è un numero:</p>
+  <p class="muted small">If it is a number:</p>
   <div class="form-grid">
     {% for field in [form.unit, form.min_value, form.max_value] %}
       <div>{{ field.label }} {{ field(step="any") if field.type == "FloatField" else field() }}
         {% for e in field.errors %}<div class="flash flash-danger">{{ e }}</div>{% endfor %}</div>
     {% endfor %}
   </div>
-  <p class="muted small">Se è una scelta da lista:</p>
+  <p class="muted small">If it is a choice from a list:</p>
   <div class="form-grid">
     <div>{{ form.choices.label }} {{ form.choices() }}
       {% for e in form.choices.errors %}<div class="flash flash-danger">{{ e }}</div>{% endfor %}</div>
@@ -62,12 +62,12 @@
   <p>{{ form.submit(class="btn btn-primary") }}</p>
 </form>
 
-<h3>Esporta i casi</h3>
-<p><a class="btn" href="{{ url_for('main.export_csv') }}">Scarica CSV</a>
-  <span class="muted small">Casi pseudonimizzati per l'allenamento offline (cartella <code>data/</code>, mai nel repo).
-  Le variabili aggiuntive hanno il prefisso <code>x_</code>; una cella vuota è un valore mancante.</span></p>
+<h3>Export the cases</h3>
+<p><a class="btn" href="{{ url_for('main.export_csv') }}">Download CSV</a>
+  <span class="muted small">Pseudonymized cases for offline training (folder <code>data/</code>, never in the repo).
+  Extra variables have the prefix <code>x_</code>; an empty cell is a missing value.</span></p>
 {% else %}
-<p class="muted">Solo un amministratore può aggiungere variabili o esportare i casi.</p>
+<p class="muted">Only an administrator can add variables or export the cases.</p>
 {% endif %}
 
 {% endblock %}

@@ -25,10 +25,10 @@ from training import evaluate, vitaldb
 MODEL_NAME = "vitaldb-demo-lr-v1"
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
 LABELS = {
-    "null": "Nessun modello (prevalenza)",
-    "lr": "Logistica penalizzata (L2)",
+    "null": "No model (prevalence)",
+    "lr": "Penalized logistic (L2)",
     "hgb": "Gradient boosting",
-    "mlp": "Rete neurale (MLP 8)",
+    "mlp": "Neural network (MLP 8)",
 }
 
 
@@ -75,20 +75,20 @@ def model_card(model: dict, results: dict) -> str:
     lines = [
         f"# Model card — {model['name']}",
         "",
-        f"Creato: {model['created']} · tipo: regressione logistica penalizzata (L2, C={model['C']:.3g})",
+        f"Created: {model['created']} · type: penalized logistic regression (L2, C={model['C']:.3g})",
         "",
-        "## Dati",
-        f"- {d['source']} — {d['n']} pazienti adulti (primo intervento per paziente), "
-        f"{d['events']} con Cormack 3–4 ({d['prevalence'] * 100:.1f}%).",
-        f"- Variabili: {', '.join(model['features'])}. **Nessun esame delle vie aeree** (non presente in VitalDB).",
-        "- Popolazione coreana, chirurgia non cardiaca, un solo centro: la trasferibilità non è nota.",
-        "- Altezza e peso esclusi dopo una prima prova: insieme al BMI (che ne deriva) davano coefficienti "
-        "opposti e instabili (collinearità). Le prestazioni erano uguali (AUC ~0,59).",
+        "## Data",
+        f"- {d['source']} — {d['n']} adult patients (first surgery per patient), "
+        f"{d['events']} with Cormack 3–4 ({d['prevalence'] * 100:.1f}%).",
+        f"- Variables: {', '.join(model['features'])}. **No airway examination** (not available in VitalDB).",
+        "- Korean population, non-cardiac surgery, one centre: transferability unknown.",
+        "- Height and weight excluded after a first try: together with BMI (derived from them) they gave "
+        "opposite, unstable coefficients (collinearity). Performance was the same (AUC ~0.59).",
         "",
-        "## Validazione interna (CV stratificata 5 fold × 10 ripetizioni)",
-        "Valori: media e intervallo 2,5–97,5% tra le ripetizioni.",
+        "## Internal validation (stratified 5-fold CV × 10 repeats)",
+        "Values: mean and 2.5–97.5% range across repeats.",
         "",
-        "| Modello | AUC | AUPRC | Brier | Pendenza calibr. | Sens. @15% | VPP @15% | Segnalati @15% |",
+        "| Model | AUC | AUPRC | Brier | Calibr. slope | Sens. @15% | PPV @15% | Flagged @15% |",
         "|---|---|---|---|---|---|---|---|",
     ]
     for key, r in results.items():
@@ -99,12 +99,12 @@ def model_card(model: dict, results: dict) -> str:
                      f"{f('sensitivity', True)} | {f('ppv', True)} | {f('flagged', True)} |")
     lines += [
         "",
-        "## Limiti",
-        "- Senza Mallampati, DTM, apertura bocca, mobilità del collo: il modello usa solo dati demografici.",
-        "- Il Cormack in VitalDB viene dalla cartella elettronica; non è noto se con lama diretta o videolaringoscopio.",
-        "- Non validato esternamente. **Non usare per decisioni cliniche.**",
+        "## Limitations",
+        "- No Mallampati, TMD, mouth opening or neck movement: the model uses demographics only.",
+        "- The Cormack grade in VitalDB comes from the electronic record; whether a direct blade or a video laryngoscope was used is unknown.",
+        "- Not externally validated. **Do not use for clinical decisions.**",
         "",
-        "Fonte dati: Lee HC et al., VitalDB, Sci Data 2022 (CC-BY 4.0), https://physionet.org/content/vitaldb/1.0.0/",
+        "Data source: Lee HC et al., VitalDB, Sci Data 2022 (CC-BY 4.0), https://physionet.org/content/vitaldb/1.0.0/",
     ]
     return "\n".join(lines) + "\n"
 

@@ -9,7 +9,7 @@ Leggi questo file prima di modificare il codice. Documenti di riferimento:
 - Il responsabile è un clinico, non uno sviluppatore: spiega le scelte tecniche in parole
   semplici e dai comandi pronti da incollare.
 - Ambiente: Windows, PowerShell, Python 3.x, venv in `venv\`.
-- Lingua: italiano per testi, documenti e interfaccia; nomi di variabili e codice in inglese.
+- Lingua: **interfaccia dell'app, pagine "Learn" e testi dei modelli esportati in inglese** (dal 03/11/2026); documenti di progetto (SPEC, README, ARCHITECTURE, DESIGN) in italiano; codice e nomi di variabili in inglese.
 
 ## Regole
 1. **Mai committare dati**: niente `*.db`, export CSV, zip, `.env`, segreti. Controlla

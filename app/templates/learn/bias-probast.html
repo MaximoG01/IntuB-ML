@@ -1,67 +1,67 @@
 {% extends "learn/_post.html" %}
 {% block post %}
-<h2>Che cos'è un bias</h2>
-<p>Un bias è un errore <strong>sistematico</strong>: non si riduce aumentando i pazienti, perché viene da come sono
-  stati scelti i pazienti, misurati i predittori o l'esito, o da come è stata fatta l'analisi. L'errore casuale
-  invece si riduce con più dati e si vede negli intervalli di confidenza.</p>
-<p>Per i modelli di predizione lo strumento standard è <strong>PROBAST</strong>: 4 domini, 20 domande guida. Per
-  ogni dominio si giudica il <em>rischio di bias</em> (basso, alto, incerto) e, nei primi tre, la
-  <em>preoccupazione per l'applicabilità</em>: quanto lo studio risponde alla <strong>nostra</strong> domanda clinica.
-  Se anche un solo dominio è ad alto rischio, il giudizio complessivo è alto.</p>
+<h2>What a bias is</h2>
+<p>A bias is a <strong>systematic</strong> error: it does not shrink with more patients, because it comes from how the
+  patients were chosen, how the predictors or the outcome were measured, or how the analysis was done. Random error, by
+  contrast, shrinks with more data and shows up in the confidence intervals.</p>
+<p>For prediction models the standard tool is <strong>PROBAST</strong>: 4 domains, 20 signalling questions. For each
+  domain we judge the <em>risk of bias</em> (low, high, unclear) and, in the first three, the <em>concern about
+  applicability</em>: how well the study answers <strong>our</strong> clinical question. If even one domain is at high
+  risk, the overall judgement is high.</p>
 
-<h2>I quattro domini</h2>
+<h2>The four domains</h2>
 <div class="table-wrap">
 <table class="table">
-  <thead><tr><th>Dominio</th><th>Domande tipiche</th></tr></thead>
+  <thead><tr><th>Domain</th><th>Typical questions</th></tr></thead>
   <tbody>
-    <tr><td>1. Partecipanti</td><td>Da che tipo di studio vengono i dati? Chi è stato incluso o escluso, e perché?</td></tr>
-    <tr><td>2. Predittori</td><td>Misurati allo stesso modo per tutti? Senza conoscere l'esito? Disponibili al momento in cui il modello si usa?</td></tr>
-    <tr><td>3. Esito</td><td>Definito in modo standard e uguale per tutti? Valutato senza conoscere i predittori?</td></tr>
-    <tr><td>4. Analisi</td><td>Abbastanza eventi? Variabili continue non tagliate in classi? Mancanti gestiti bene? Selezione delle variabili non basata sulle associazioni univariate? Calibrazione e overfitting valutati?</td></tr>
+    <tr><td>1. Participants</td><td>What kind of study do the data come from? Who was included or excluded, and why?</td></tr>
+    <tr><td>2. Predictors</td><td>Measured the same way for everyone? Without knowing the outcome? Available when the model is used?</td></tr>
+    <tr><td>3. Outcome</td><td>Defined in a standard way and the same for everyone? Assessed without knowing the predictors?</td></tr>
+    <tr><td>4. Analysis</td><td>Enough events? Continuous variables not cut into classes? Missing data handled well? Variable selection not based on univariable associations? Calibration and overfitting assessed?</td></tr>
   </tbody>
 </table>
 </div>
 
-<h2>Il giudizio sui nostri studi</h2>
+<h2>The judgement on our studies</h2>
 {% for name, m in studies.items() if m.probast %}
 <h3>{{ m.training_data.source }}</h3>
 <div class="table-wrap">
 <table class="table">
-  <thead><tr><th>Dominio</th><th>Rischio di bias</th><th>Applicabilità</th></tr></thead>
+  <thead><tr><th>Domain</th><th>Risk of bias</th><th>Applicability</th></tr></thead>
   <tbody>
     {% for d in m.probast.domains %}
     <tr><td>{{ d.domain }}</td>
       <td><strong>{{ d.risk }}</strong> — {{ d.why }}</td>
       <td>{% if d.applicability %}<strong>{{ d.applicability }}</strong> — {{ d.applicability_why }}{% else %}—{% endif %}</td></tr>
     {% endfor %}
-    <tr class="row-active"><td>Complessivo</td><td><strong>{{ m.probast.overall.risk }}</strong></td>
+    <tr class="row-active"><td>Overall</td><td><strong>{{ m.probast.overall.risk }}</strong></td>
       <td><strong>{{ m.probast.overall.applicability }}</strong></td></tr>
   </tbody>
 </table>
 </div>
 {% else %}
-<p class="muted">Nessuno studio con valutazione PROBAST.</p>
+<p class="muted">No study with a PROBAST assessment.</p>
 {% endfor %}
-<p>Il giudizio "alto" non vuol dire che uno studio sia inutile: vuol dire che i suoi numeri <strong>non vanno usati
-  per decidere</strong> su pazienti reali. Resta utile per imparare il metodo e per capire che dati servono.</p>
+<p>A "high" judgement does not mean a study is useless: it means its numbers <strong>must not be used to decide</strong>
+  about real patients. It remains useful to learn the method and to understand which data are needed.</p>
 
-<h2>Lo stesso strumento, bias diversi</h2>
+<h2>Same tool, different biases</h2>
 <ul>
-  <li><strong>Obesi</strong>: il problema principale è l'<em>esito</em> (metà dei Cormack con videolaringoscopio, che
-    migliora la visione) e i soli 18 eventi.</li>
-  <li><strong>Tiroide</strong>: il problema principale sono i <em>partecipanti</em>. Escludere chi aveva
-    un'intubazione difficile prevista toglie i casi più evidenti: è un bias di spettro, e fa sembrare i predittori
-    meno utili di quanto sono.</li>
-  <li>In entrambi l'<em>analisi</em> ha pochi eventi rispetto ai predittori: l'unico rimedio vero sono più dati,
-    raccolti con l'esame completo delle vie aeree, il Cormack con lama Macintosh e nessuna esclusione a priori.</li>
+  <li><strong>Obese</strong>: the main problem is the <em>outcome</em> (half of the Cormack grades with a video
+    laryngoscope, which improves the view) and only 18 events.</li>
+  <li><strong>Thyroid</strong>: the main problem is the <em>participants</em>. Excluding patients with an expected
+    difficult intubation removes the most obvious cases: it is spectrum bias, and it makes the predictors look less
+    useful than they are.</li>
+  <li>In both, the <em>analysis</em> has few events relative to the predictors: the only real remedy is more data,
+    collected with the full airway examination, Cormack with a Macintosh blade and no exclusions up front.</li>
 </ul>
 
-<h2>Perché non un confronto "a rete" tra dataset</h2>
-<p>Una network meta-analysis confronta trattamenti che non sono mai stati messi a confronto diretto, passando per un
-  braccio comune (A contro B e B contro C dicono qualcosa su A contro C). Qui non c'è niente del genere: VitalDB, lo
-  studio sugli obesi e quello sulla tiroide sono <strong>campioni diversi</strong> con variabili diverse, non bracci con un comparatore in
-  comune. Si possono confrontare solo in modo descrittivo, oppure validando un modello sull'altro dataset
-  (trasferibilità), che è quello che abbiamo fatto.</p>
+<h2>Why not a "network" comparison across datasets</h2>
+<p>A network meta-analysis compares treatments that were never compared directly, going through a common arm (A versus B
+  and B versus C say something about A versus C). There is nothing like that here: VitalDB, the obese-patient study and
+  the thyroid study are <strong>different samples</strong> with different variables, not arms with a common comparator.
+  They can only be compared descriptively, or by validating a model on the other dataset (transportability), which is
+  what we did.</p>
 {% endblock %}
 {% block references %}
 <li>Wolff RF et al. PROBAST: a tool to assess the risk of bias and applicability of prediction model studies.
