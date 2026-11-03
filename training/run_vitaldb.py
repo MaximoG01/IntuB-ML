@@ -52,10 +52,10 @@ def make_models(seed: int = 42):
     }
 
 
-def export_lr(pipe: Pipeline, features, info: dict) -> dict:
+def export_lr(pipe: Pipeline, features, info: dict, name: str = MODEL_NAME) -> dict:
     lr = pipe.named_steps["lr"]
     return {
-        "name": MODEL_NAME,
+        "name": name,
         "type": "logistic",
         "created": date.today().isoformat(),
         "features": list(features),

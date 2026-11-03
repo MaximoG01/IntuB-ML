@@ -101,3 +101,75 @@ def dca_reference(y: np.ndarray) -> Dict[str, List[float]]:
 
 def compare(models: Dict[str, object], X: np.ndarray, y: np.ndarray, **cv) -> Dict[str, Dict]:
     return {name: summarize(y, oof_predictions(m, X, y, **cv)) for name, m in models.items()}
+
+
+def fold_auc(model, X: np.ndarray, y: np.ndarray, n_splits=5, n_repeats=10, seed=42) -> Dict[str, float]:
+    """
+    AUC computed inside each test fold, averaged per repeat. With few events the AUC of pooled
+    out-of-fold predictions is biased below 0.5 for weak models (fold-to-fold shifts in training
+    prevalence anti-correlate with the outcome); within one fold that shift cancels out.
+    """
+    cv = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=seed)
+    aucs = np.array([roc_auc_score(y[te], clone(model).fit(X[tr], y[tr]).predict_proba(X[te])[:, 1])
+                     for tr, te in cv.split(X, y)]).reshape(n_repeats, n_splits).mean(axis=1)
+    return {"mean": float(aucs.mean()), "lo": float(np.percentile(aucs, 2.5)), "hi": float(np.percentile(aucs, 97.5))}
+
+
+def bootstrap_auc_ci(y: np.ndarray, p: np.ndarray, n_boot: int = 2000, seed: int = 42) -> Dict[str, float]:
+    """Point AUC and percentile bootstrap 95% CI (resampling patients)."""
+    rng = np.random.default_rng(seed)
+    aucs = []
+    for _ in range(n_boot):
+        i = rng.integers(0, len(y), len(y))
+        if 0 < y[i].sum() < len(i):
+            aucs.append(roc_auc_score(y[i], p[i]))
+    return {"auc": float(roc_auc_score(y, p)),
+            "lo": float(np.percentile(aucs, 2.5)), "hi": float(np.percentile(aucs, 97.5))}
+
+
+def _apparent(y: np.ndarray, p: np.ndarray) -> Dict[str, float]:
+    slope, _ = calibration_slope_intercept(y, p)
+    return {"auc": roc_auc_score(y, p), "brier": brier_score_loss(y, p), "cal_slope": slope}
+
+
+def optimism_corrected(model, X: np.ndarray, y: np.ndarray, n_boot: int = 500, seed: int = 42) -> Dict:
+    """
+    Harrell's bootstrap: fit on each bootstrap sample, measure how much better it looks on that
+    sample than on the original data (optimism); corrected = apparent - mean optimism.
+    The corrected calibration slope estimates the shrinkage the model would need.
+    """
+    rng = np.random.default_rng(seed)
+    apparent = _apparent(y, clone(model).fit(X, y).predict_proba(X)[:, 1])
+    optimism = {k: [] for k in apparent}
+    for _ in range(n_boot):
+        i = rng.integers(0, len(y), len(y))
+        if y[i].sum() < 5 or y[i].sum() > len(i) - 5:  # inner CV needs events in every fold
+            continue
+        m = clone(model).fit(X[i], y[i])
+        on_boot = _apparent(y[i], m.predict_proba(X[i])[:, 1])
+        on_orig = _apparent(y, m.predict_proba(X)[:, 1])
+        for k in apparent:
+            optimism[k].append(on_boot[k] - on_orig[k])
+    return {k: {"apparent": float(apparent[k]), "optimism": float(np.mean(optimism[k])),
+                "corrected": float(apparent[k] - np.mean(optimism[k]))} for k in apparent} | \
+        {"n_boot": len(optimism["auc"])}
+
+
+def riley_sample_size(prevalence: float, n_params: int, r2_cs: float | None = None,
+                      shrinkage: float = 0.9, delta: float = 0.05) -> Dict[str, float]:
+    """
+    Minimum n for a binary-outcome prediction model (Riley et al., BMJ 2020;368:m441).
+    Without prior information R2_CS is set to 15% of its maximum, as the authors suggest.
+    """
+    phi = prevalence
+    ln_l0 = phi * np.log(phi) + (1 - phi) * np.log(1 - phi)  # null log-likelihood per patient
+    max_r2 = 1 - np.exp(2 * ln_l0)
+    r2 = r2_cs if r2_cs is not None else 0.15 * max_r2
+    n1 = n_params / ((shrinkage - 1) * np.log(1 - r2 / shrinkage))
+    s2 = r2 / (r2 + delta * max_r2)
+    n2 = n_params / ((s2 - 1) * np.log(1 - r2 / s2))
+    n3 = (1.96 / 0.05) ** 2 * phi * (1 - phi)
+    n = int(np.ceil(max(n1, n2, n3)))
+    return {"r2_cs": float(r2), "max_r2_cs": float(max_r2), "n_shrinkage": float(np.ceil(n1)),
+            "n_optimism": float(np.ceil(n2)), "n_intercept": float(np.ceil(n3)),
+            "n_required": n, "events_required": int(np.ceil(n * phi))}

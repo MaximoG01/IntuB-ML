@@ -3,4 +3,6 @@
 pandas
 numpy
 pytest
+pyreadr  # reads the R file of the laryngoscope dataset
+openpyxl  # reads the Excel file of the Padova dataset
 # torch  # only for the experimental distilled NN in app/ml_nn.py
