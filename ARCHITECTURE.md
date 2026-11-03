@@ -29,6 +29,8 @@ Principio: **si allena in locale, online si usa e basta.**
 ```
 ┌──────────────── LOCALE (PC del ricercatore) ────────────────┐
 │ training/                                                   │
+│   decassai.py     scarica lo studio tiroide Padova (CC-BY)  │
+│   laryngoscope.py scarica lo studio sugli obesi (MIT)       │
 │   vitaldb.py      scarica e pulisce VitalDB (CC-BY 4.0)     │
 │   pull_data.py    scarica i casi pseudonimizzati dall'API   │
 │   pipeline.py     pulizia → imputazione → spline → scaler   │

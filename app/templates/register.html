@@ -5,15 +5,15 @@
   <h2>Register</h2>
   <form method="post">
     {{ form.hidden_tag() }}
+    {% set fields = [form.name, form.email, form.password, form.password2] + ([form.invite_code] if invite_required else []) %}
+    {% for field in fields %}
     <div class="form-group">
-      {{ form.name.label }} {{ form.name(class="form-control") }}
+      {{ field.label }} {{ field(class="form-control") }}
+      {% for error in field.errors %}
+        <div class="flash flash-danger">{{ error }}</div>
+      {% endfor %}
     </div>
-    <div class="form-group">
-      {{ form.email.label }} {{ form.email(class="form-control") }}
-    </div>
-    <div class="form-group">
-      {{ form.password.label }} {{ form.password(class="form-control") }}
-    </div>
+    {% endfor %}
     <div class="form-group">
       {{ form.submit(class="btn") }}
     </div>

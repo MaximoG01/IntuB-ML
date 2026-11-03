@@ -1,0 +1,123 @@
+{% extends "learn/_post.html" %}
+{% block post %}
+<h2>Una rete neurale piccola</h2>
+{% set nn0 = teaching.neural_net if teaching else none %}
+<p>Una rete neurale è una catena di logistiche: ogni nodo nascosto combina i predittori con i suoi pesi, e il nodo
+  finale combina i nodi nascosti.{% if nn0 %} Con {{ nn0.inputs|length }} predittori e 8 nodi nascosti sono già
+  {{ nn0.inputs|length * 8 + 17 }} parametri, contro i {{ nn0.inputs|length + 1 }} della logistica, per
+  {{ nn0.events_train + nn0.events_val }} eventi.{% endif %}</p>
+
+{% if teaching %}
+{% set nn = teaching.neural_net %}
+{% set net = nn.curves["senza regolarizzazione"] %}
+{% set ni = nn.inputs|length %}{% set nh = net.w2|length %}
+{% set maxw = [net.w1|map("max")|max, (net.w1|map("min")|min)|abs]|max %}
+{% set maxw2 = [net.w2|max, (net.w2|min)|abs]|max %}
+<figure class="nn-figure">
+  <svg viewBox="0 0 560 300" role="img" aria-label="Schema della rete: 5 ingressi, 8 nodi nascosti, 1 uscita; spessore = peso">
+    {% for h in range(nh) %}{% set yh = 30 + h * 240 / (nh - 1) %}
+      {% for i in range(ni) %}{% set yi = 40 + i * 220 / (ni - 1) %}{% set w = net.w1[h][i] %}
+        <line x1="130" y1="{{ yi }}" x2="300" y2="{{ yh }}" stroke="{{ '#2a78d6' if w >= 0 else '#eb6834' }}"
+              stroke-width="{{ 0.4 + 3.6 * (w|abs) / maxw }}" {% if w < 0 %}stroke-dasharray="4 3"{% endif %} opacity="0.8"/>
+      {% endfor %}
+      {% set w = net.w2[h] %}
+      <line x1="300" y1="{{ yh }}" x2="470" y2="150" stroke="{{ '#2a78d6' if w >= 0 else '#eb6834' }}"
+            stroke-width="{{ 0.4 + 3.6 * (w|abs) / maxw2 }}" {% if w < 0 %}stroke-dasharray="4 3"{% endif %} opacity="0.8"/>
+      <circle cx="300" cy="{{ yh }}" r="8" fill="#fcfcfb" stroke="#52514e" stroke-width="1.5"/>
+    {% endfor %}
+    {% for i in range(ni) %}{% set yi = 40 + i * 220 / (ni - 1) %}
+      <circle cx="130" cy="{{ yi }}" r="8" fill="#fcfcfb" stroke="#52514e" stroke-width="1.5"/>
+      <text x="116" y="{{ yi + 4 }}" text-anchor="end" font-size="12" fill="#0b0b0b">{{ nn.inputs[i] }}</text>
+    {% endfor %}
+    <circle cx="470" cy="150" r="11" fill="#fcfcfb" stroke="#0b0b0b" stroke-width="2"/>
+    <text x="488" y="146" font-size="12" fill="#0b0b0b">rischio</text>
+    <text x="488" y="161" font-size="12" fill="#0b0b0b">Cormack 3–4</text>
+  </svg>
+  <figcaption class="muted small">Pesi della rete allenata senza regolarizzazione. Spessore = grandezza del peso;
+    linea continua blu = peso positivo, tratteggiata arancione = negativo.</figcaption>
+</figure>
+
+<h2>Errore sui pazienti di allenamento e su quelli tenuti da parte</h2>
+<p>I pazienti sono divisi a caso: {{ nn.n_train }} per allenare ({{ nn.events_train }} eventi) e {{ nn.n_val }}
+  tenuti da parte ({{ nn.events_val }} eventi). A ogni giro sui dati (<em>epoca</em>) si misura l'errore su entrambi.</p>
+<div class="small-multiples">
+  {% for label in nn.curves %}
+  <div>
+    <h3 class="chart-title">{{ label|capitalize }}</h3>
+    <div class="chart chart-small"><canvas id="nn{{ loop.index }}"></canvas></div>
+  </div>
+  {% endfor %}
+</div>
+<ul>
+  <li><strong>Senza regolarizzazione</strong>: l'errore di allenamento scende quasi a zero
+    ({{ "%.2f"|format(net.train[-1]) }}), quello sui pazienti nuovi scende per poche epoche e poi
+    <strong>risale</strong> ({{ "%.2f"|format(net.val[-1]) }} alla fine). La rete sta imparando a memoria i
+    {{ nn.n_train }} pazienti, rumore compreso.</li>
+  <li><strong>Con regolarizzazione</strong> (penalità sui pesi grandi) le due curve restano vicine. Confronta l'errore
+    sui pazienti nuovi con la linea grigia: se non scende sotto, la rete non fa meglio che dare a tutti lo stesso rischio.</li>
+</ul>
+<details>
+  <summary>Tabella</summary>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Epoca</th>{% for label in nn.curves %}<th>{{ label }}: allenamento</th><th>{{ label }}: nuovi</th>{% endfor %}</tr></thead>
+    <tbody>{% for e in [1, 10, 25, 50, 100, 200, 400] %}
+      <tr><td>{{ e }}</td>{% for c in nn.curves.values() %}<td>{{ "%.3f"|format(c.train[e - 1]) }}</td><td>{{ "%.3f"|format(c.val[e - 1]) }}</td>{% endfor %}</tr>
+    {% endfor %}</tbody>
+  </table></div>
+</details>
+{% endif %}
+
+<h2>Lo stesso problema nella logistica</h2>
+{% if model and model.validation.optimism_unpenalized %}
+{% set o = model.validation.optimism_unpenalized %}
+<p>Anche una logistica senza penalizzazione con {{ model.features|length }} predittori si adatta troppo: sui dati di allenamento ha AUC
+  {{ "%.2f"|format(o.auc.apparent) }}, ma il bootstrap stima che su pazienti nuovi scenderebbe a
+  {{ "%.2f"|format(o.auc.corrected) }}, con pendenza di calibrazione {{ "%.2f"|format(o.cal_slope.corrected) }}
+  (predizioni troppo estreme: un 30% previsto sarebbe in realtà molto più vicino alla media).</p>
+{% endif %}
+<p>La logistica <strong>penalizzata</strong> sceglie con validazione incrociata quanto "tirare" i pesi verso zero:
+  quando il segnale è debole li porta quasi a zero (è successo con gli obesi), quando c'è li tiene ma li ammorbidisce.
+  Le regole pratiche:</p>
+<ul>
+  <li>prima della scelta dell'algoritmo, contare gli <strong>eventi</strong> (criteri di Riley);</li>
+  <li>valutare sempre su pazienti che il modello non ha visto, e la <strong>calibrazione</strong> oltre all'AUC;</li>
+  <li>una rete neurale si giustifica solo con molti eventi e predittori che interagiscono; su dati tabellari piccoli
+    la logistica penalizzata è di solito altrettanto buona e più facile da spiegare.</li>
+</ul>
+
+{% if teaching %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+(() => {
+  const NN = {{ teaching.neural_net | tojson }};
+  // loss of "same risk for everyone" (training prevalence) on the held-out patients
+  const p = NN.events_train / NN.n_train, q = NN.events_val / NN.n_val;
+  const nullLoss = -(q * Math.log(p) + (1 - q) * Math.log(1 - p));
+  const curves = Object.values(NN.curves);
+  const yMax = Math.min(1.6, Math.max(...curves.flatMap(c => c.val.concat(c.train)))) * 1.05;
+  curves.forEach((c, k) => {
+    const epochs = c.train.map((_, i) => i + 1);
+    new Chart(document.getElementById("nn" + (k + 1)), {
+      type: "line",
+      data: { labels: epochs, datasets: [
+        { label: "Pazienti di allenamento", data: c.train, borderColor: "#2a78d6", borderWidth: 2, pointRadius: 0 },
+        { label: "Pazienti nuovi", data: c.val, borderColor: "#eb6834", borderWidth: 2, borderDash: [6, 4], pointRadius: 0 },
+        { label: "Stesso rischio per tutti", data: epochs.map(() => nullLoss), borderColor: "#9aa5b1", borderWidth: 1, pointRadius: 0 }
+      ]},
+      options: { maintainAspectRatio: false, animation: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { tooltip: { callbacks: { title: items => "Epoca " + items[0].label,
+                     label: it => it.dataset.label + ": " + it.parsed.y.toFixed(3) } } },
+        scales: { x: { title: { display: true, text: "Epoca" }, ticks: { maxTicksLimit: 8 }, grid: { display: false } },
+                  y: { min: 0, max: yMax, title: { display: true, text: "Errore (log-loss)" }, grid: { color: "#eeeeec" } } } }
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}
+{% block references %}
+<li>Riley RD et al. BMJ 2020;368:m441.</li>
+<li>Christodoulou E et al. A systematic review shows no performance benefit of machine learning over logistic
+  regression for clinical prediction models. J Clin Epidemiol 2019;110:12-22.</li>
+{% endblock %}

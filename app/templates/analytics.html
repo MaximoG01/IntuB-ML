@@ -6,23 +6,27 @@
 
 {% if not model %}
   <div class="flash flash-warning">Nessun modello attivo. Allenalo in locale con
-    <code>python -m training.run_vitaldb</code> (vedi README).</div>
+    <code>python -m training.run_laryngoscope</code> (vedi README).</div>
 {% else %}
 {% set td = model.training_data %}
-{% set res = model.validation.results %}
+{% set v = model.validation %}
+{% set res = v.results %}
+{% set primary = model.primary or "Logistica penalizzata (L2)" %}
+{% set thr = (model.threshold * 100)|round|int %}
 <section class="card">
   <p><strong>{{ model.name }}</strong> · creato il {{ model.created }} · regressione logistica penalizzata</p>
-  <p>Dati: {{ td.source }} — {{ td.n }} pazienti, {{ td.events }} con Cormack 3–4
-    ({{ (td.prevalence * 100)|round(1) }}%). Variabili: età, sesso, BMI, ASA, urgenza.</p>
-  <p class="warn"><strong>Limite principale:</strong> VitalDB non contiene Mallampati né altri esami delle vie aeree.
-    Con i soli dati demografici nessun modello supera un'AUC di circa 0,6 e, alla soglia del
-    {{ (model.threshold * 100)|round|int }}%, quasi nessun paziente viene segnalato.
-    Serve raccogliere casi con l'esame delle vie aeree.</p>
-  <p class="muted small">Validazione: {{ model.validation.method }}. Tra parentesi: intervallo 2,5–97,5% tra le ripetizioni.</p>
+  <p>Dati: {{ td.source }} — {{ td.n }} pazienti{% if td.population %} ({{ td.population }}){% endif %},
+    {{ td.events }} con Cormack 3–4 ({{ (td.prevalence * 100)|round(1) }}%).
+    Variabili: {{ model.features|map("feature_label")|join(", ") }}.</p>
+  {% if model.limitations %}
+    <p class="warn"><strong>Limiti:</strong></p>
+    <ul>{% for l in model.limitations %}<li>{{ l|replace("**", "") }}</li>{% endfor %}</ul>
+  {% endif %}
+  <p class="muted small">Validazione: {{ v.method }}. Tra parentesi: intervallo 2,5–97,5% tra le ripetizioni.</p>
 </section>
 
 <h3>1. Calibrazione — il rischio previsto corrisponde a quello osservato?</h3>
-<p class="muted">Ogni punto è un decimo dei pazienti, ordinati per rischio previsto. Sulla diagonale = calibrazione perfetta.
+<p class="muted">Ogni punto è un gruppo di pazienti, ordinati per rischio previsto. Sulla diagonale = calibrazione perfetta.
   È il grafico più importante quando si usa una soglia di probabilità.</p>
 <div class="chart"><canvas id="calChart"></canvas></div>
 
@@ -38,41 +42,117 @@
 <h3>4. Confronto tra modelli (stessi fold, stesse metriche)</h3>
 <div class="table-wrap">
 <table class="table">
-  <thead><tr><th>Modello</th><th>AUC</th><th>Brier</th><th>Pendenza calibr.</th>
-    <th>Sensibilità @{{ (model.threshold * 100)|round|int }}%</th><th>Segnalati @{{ (model.threshold * 100)|round|int }}%</th></tr></thead>
+  <thead><tr><th>Modello</th><th>AUC</th><th>Brier</th>
+    <th>Sensibilità @{{ thr }}%</th><th>Segnalati @{{ thr }}%</th></tr></thead>
   <tbody>
   {% for name, r in res.items() %}
     {% set m = r.metrics %}
-    <tr {% if name == "Logistica penalizzata (L2)" %}class="row-active"{% endif %}>
-      <td>{{ name }}{% if name == "Logistica penalizzata (L2)" %} ◀ attivo{% endif %}</td>
-      <td>{{ "%.3f"|format(m.auc.mean) }} <span class="muted">({{ "%.3f"|format(m.auc.lo) }}–{{ "%.3f"|format(m.auc.hi) }})</span></td>
-      <td>{{ "%.4f"|format(m.brier.mean) }}</td>
-      <td>{{ "%.2f"|format(m.cal_slope.mean) }}</td>
-      <td>{{ "%.1f"|format(m.sensitivity.mean * 100) }}%</td>
-      <td>{{ "%.1f"|format(m.flagged.mean * 100) }}%</td>
+    {% set auc = r.auc_fold or m.auc %}
+    <tr {% if name == primary %}class="row-active"{% endif %}>
+      <td>{{ name }}{% if name == primary %} ◀ attivo{% endif %}</td>
+      <td>{{ "%.2f"|format(auc.mean) }} <span class="muted">({{ "%.2f"|format(auc.lo) }}–{{ "%.2f"|format(auc.hi) }})</span></td>
+      <td>{{ "%.3f"|format(m.brier.mean) }}</td>
+      <td>{{ "%.0f"|format(m.sensitivity.mean * 100) }}%</td>
+      <td>{{ "%.0f"|format(m.flagged.mean * 100) }}%</td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
 <p class="muted small">Il modello attivo è stato scelto <em>prima</em> di vedere i risultati (logistica: interpretabile e calibrata).
-  Le differenze di AUC tra modelli sono piccole e dentro la variabilità tra ripetizioni.</p>
+  {% if res|length and (res.values()|first).auc_fold %}AUC calcolata dentro ogni fold (con pochi eventi l'AUC sulle predizioni riunite è falsata verso il basso).{% endif %}</p>
 
-<h3>5. Coefficienti (odds ratio per una deviazione standard)</h3>
+{% if v.optimism %}
+<h3>5. Quanto è ottimista il modello? (bootstrap di Harrell)</h3>
+<p class="muted">Un modello sembra sempre migliore sui dati su cui è stato allenato. Il bootstrap stima di quanto, e lo sottrae.
+  Una pendenza di calibrazione corretta molto sotto 1 vuol dire overfitting: le predizioni sono troppo estreme.</p>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Modello</th><th>AUC apparente</th><th>AUC corretta</th><th>Pendenza corretta</th></tr></thead>
+  <tbody>
+    {% for title, o in [("Logistica penalizzata (attivo)", v.optimism), ("Logistica senza penalizzazione", v.optimism_unpenalized)] if o %}
+    <tr><td>{{ title }}</td><td>{{ "%.2f"|format(o.auc.apparent) }}</td><td>{{ "%.2f"|format(o.auc.corrected) }}</td>
+      <td>{{ "%.2f"|format(o.cal_slope.corrected) }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if v.optimism.cal_slope.corrected > 3 %}
+<p class="muted small">La pendenza del modello penalizzato non è interpretabile: le sue predizioni sono quasi uguali per tutti.</p>
+{% elif v.optimism.cal_slope.corrected > 1 %}
+<p class="muted small">Pendenza corretta sopra 1: la penalizzazione è stata un po' prudente (predizioni leggermente troppo vicine alla media), nessun overfitting.</p>
+{% endif %}
+{% endif %}
+
+<h3>6. Coefficienti (odds ratio per una deviazione standard)</h3>
 <ul>
   {% for f, c in model.coef.items() %}
-    <li>{{ {"age": "Età", "sex_male": "Sesso maschile", "bmi": "BMI", "asa": "ASA", "emergency": "Urgenza"}.get(f, f) }}:
-      OR {{ "%.2f"|format(c|exp) }}</li>
+    <li>{{ f|feature_label }}: OR {{ "%.2f"|format(c|exp) }}
+      {% if model.coef_ci %}<span class="muted">(IC 95% {{ "%.2f"|format(model.coef_ci[f].lo|exp) }}–{{ "%.2f"|format(model.coef_ci[f].hi|exp) }})</span>{% endif %}</li>
   {% endfor %}
 </ul>
+
+{% if v.sample_size or v.external_vitaldb or v.sensitivity_macintosh or v.egri_rule %}
+<h3>7. Confronti e analisi secondarie</h3>
+<ul>
+  {% if v.egri_rule %}{% set m0 = v.egri_rule %}
+    <li><strong>El-Ganzouri ≥ 4 come regola fissa</strong> (il riferimento clinico): AUC {{ "%.2f"|format(m0.auc) }},
+      sensibilità {{ "%.0f"|format(m0.sensitivity * 100) }}%, specificità {{ "%.0f"|format(m0.specificity * 100) }}%,
+      segnalati {{ "%.0f"|format(m0.flagged * 100) }}%.</li>
+  {% endif %}
+  {% if v.thyroid_model %}
+    <li><strong>+ circonferenza del collo</strong> (solo tiroide): AUC {{ "%.2f"|format(v.thyroid_model.auc_fold.mean) }},
+      corretta {{ "%.2f"|format(v.thyroid_model.optimism.auc.corrected) }}.</li>
+  {% endif %}
+  {% if v.sensitivity_macintosh %}{% set s = v.sensitivity_macintosh %}
+    <li><strong>Solo lama Macintosh</strong> ({{ s.n }} pazienti, {{ s.events }} eventi): AUC {{ "%.2f"|format(s.auc_fold.mean) }}.</li>
+  {% endif %}
+  {% if v.external_vitaldb %}{% set e = v.external_vitaldb %}
+    <li><strong>Il modello VitalDB su questi pazienti</strong>: AUC {{ "%.2f"|format(e.auc_ci.auc) }}
+      (IC 95% {{ "%.2f"|format(e.auc_ci.lo) }}–{{ "%.2f"|format(e.auc_ci.hi) }}); prevede in media
+      {{ "%.1f"|format(e.mean_predicted * 100) }}% contro {{ "%.1f"|format(e.observed * 100) }}% osservato.
+      Un modello allenato dove l'esito è raro sottostima il rischio dove è frequente.</li>
+  {% endif %}
+  {% if v.sample_size %}{% set n = v.sample_size %}
+    <li><strong>Numerosità minima</strong> (Riley, BMJ 2020) per {{ model.features|length }} predittori:
+      {{ n.n_required }} pazienti ({{ n.events_required }} eventi). Disponibili: {{ td.n }} ({{ td.events }}).</li>
+  {% endif %}
+</ul>
+{% endif %}
+
+{% if model.probast %}
+<h3>8. Rischio di bias (PROBAST)</h3>
+<p class="muted">{{ model.probast.tool }}. Per ogni dominio: rischio che le stime siano distorte e quanto i dati
+  rispondono alla nostra domanda clinica. <a href="{{ url_for('main.blog_post', slug='bias-probast') }}">Come si legge</a></p>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Dominio</th><th>Rischio di bias</th><th>Applicabilità (preoccupazione)</th></tr></thead>
+  <tbody>
+    {% for d in model.probast.domains %}
+    <tr><td>{{ d.domain }}</td>
+      <td><strong>{{ d.risk }}</strong><br><span class="muted small">{{ d.why }}</span></td>
+      <td>{% if d.applicability %}<strong>{{ d.applicability }}</strong><br><span class="muted small">{{ d.applicability_why }}</span>{% else %}—{% endif %}</td></tr>
+    {% endfor %}
+    <tr class="row-active"><td>Complessivo</td><td><strong>{{ model.probast.overall.risk }}</strong></td>
+      <td><strong>{{ model.probast.overall.applicability }}</strong></td></tr>
+  </tbody>
+</table>
+</div>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
   const RES = {{ res | tojson }};
-  const REF = {{ model.validation.dca_reference | tojson }};
-  const COLORS = {"Nessun modello (prevalenza)": "#9aa5b1", "Logistica penalizzata (L2)": "#0f3c91",
-                  "Gradient boosting": "#c2410c", "Rete neurale (MLP 8)": "#0e7c66"};
-  const ACTIVE = "Logistica penalizzata (L2)";
+  const REF = {{ v.dca_reference | tojson }};
+  const ACTIVE = {{ primary | tojson }};
+  // active model = slot 1 (blue); the others take the next slots in fixed order; no-model = gray
+  // past three hues crossing lines are no longer distinguishable: the rest are dark gray + dash
+  const SLOTS = ["#eb6834", "#1baf7a", "#52514e"];
+  const DASH = n => (others.indexOf(n) >= 2 ? [6, 4] : []);
+  const others = Object.keys(RES).filter(n => n !== ACTIVE && !n.startsWith("Nessun"));
+  const COLORS = Object.fromEntries([[ACTIVE, "#2a78d6"], ...others.map((n, i) => [n, SLOTS[i % SLOTS.length]]),
+    ...Object.keys(RES).filter(n => n.startsWith("Nessun")).map(n => [n, "#9aa5b1"])]);
+  const auc = r => (r.auc_fold || r.metrics.auc).mean;
   const lin = (title, max) => ({ type: "linear", min: 0, max: max, title: { display: true, text: title } });
 
   const cal = RES[ACTIVE].calibration;
@@ -80,7 +160,7 @@
   new Chart(document.getElementById("calChart"), {
     type: "scatter",
     data: { datasets: [
-      { label: "Logistica (attivo)", data: cal.map(p => ({ x: p.pred, y: p.obs })), backgroundColor: COLORS[ACTIVE], pointRadius: 5 },
+      { label: "Modello attivo", data: cal.map(p => ({ x: p.pred, y: p.obs })), backgroundColor: COLORS[ACTIVE], pointRadius: 5 },
       { label: "Calibrazione perfetta", type: "line", data: [{x: 0, y: 0}, {x: calMax, y: calMax}],
         borderColor: "#9aa5b1", borderDash: [6, 6], pointRadius: 0 }
     ]},
@@ -90,9 +170,9 @@
   new Chart(document.getElementById("rocChart"), {
     type: "line",
     data: { datasets: Object.entries(RES).filter(([n]) => !n.startsWith("Nessun")).map(([n, r]) => ({
-        label: n + " (AUC " + r.metrics.auc.mean.toFixed(2) + ")",
+        label: n + " (AUC " + auc(r).toFixed(2) + ")",
         data: r.roc.fpr.map((x, i) => ({ x: x, y: r.roc.tpr[i] })),
-        borderColor: COLORS[n], borderWidth: n === ACTIVE ? 3 : 1.5, pointRadius: 0
+        borderColor: COLORS[n], borderWidth: n === ACTIVE ? 3 : 2, borderDash: DASH(n), pointRadius: 0
       })).concat([{ label: "Caso", data: [{x: 0, y: 0}, {x: 1, y: 1}], borderColor: "#9aa5b1", borderDash: [6, 6], pointRadius: 0 }]) },
     options: { maintainAspectRatio: false, parsing: false,
       scales: { x: lin("1 − specificità (falsi positivi)", 1), y: lin("Sensibilità", 1) } }
@@ -102,13 +182,13 @@
   new Chart(document.getElementById("dcaChart"), {
     type: "line",
     data: { labels: t.map(x => Math.round(x * 100) + "%"), datasets: [
-      { label: "Logistica (attivo)", data: RES[ACTIVE].dca.net_benefit, borderColor: COLORS[ACTIVE], borderWidth: 3, pointRadius: 0 },
+      { label: "Modello attivo", data: RES[ACTIVE].dca.net_benefit, borderColor: COLORS[ACTIVE], borderWidth: 3, pointRadius: 0 },
       { label: "Prepara sempre", data: REF.treat_all, borderColor: "#c2410c", borderDash: [4, 4], pointRadius: 0 },
       { label: "Mai", data: REF.treat_none, borderColor: "#9aa5b1", pointRadius: 0 }
     ]},
     options: { maintainAspectRatio: false, scales: {
       x: { title: { display: true, text: "Soglia di rischio" } },
-      y: { suggestedMin: -0.01, suggestedMax: 0.03, title: { display: true, text: "Beneficio netto" } } } }
+      y: { title: { display: true, text: "Beneficio netto" } } } }
   });
 </script>
 {% endif %}

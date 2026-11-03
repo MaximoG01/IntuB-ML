@@ -1,11 +1,14 @@
+import csv
+import hmac
+import io
 from types import SimpleNamespace
 from sqlalchemy import or_
-from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
+from flask import Blueprint, Response, render_template, redirect, url_for, request, flash, abort, current_app
 from flask_login import login_required, current_user, login_user, logout_user
 
 from app import db
-from app.models import User, IntubationRecord
-from app.forms import LoginForm, RegistrationForm
+from app.models import User, IntubationRecord, CustomField, CustomValue
+from app.forms import LoginForm, RegistrationForm, CustomFieldForm, ToggleForm
 
 from app.ml import (
     evaluate_logistic,
@@ -13,7 +16,7 @@ from app.ml import (
     InsufficientDataError,
 )
 from app.egri import egri_from_record, NECK_MOVEMENT_CHOICES, HISTORY_CHOICES
-from app.inference import active_model, predict as predict_proba
+from app.inference import active_model, study_models, teaching_data, predict as predict_proba
 
 bp = Blueprint("main", __name__)
 
@@ -118,14 +121,21 @@ def logout():
 @bp.route("/register", methods=["GET", "POST"])
 def register():
     form = RegistrationForm()
+    invite = current_app.config.get("INVITE_CODE")
     if form.validate_on_submit():
+        if invite and not hmac.compare_digest((form.invite_code.data or "").strip(), invite):
+            form.invite_code.errors.append("Codice invito non valido: chiedilo a chi gestisce l'app.")
+            return render_template("register.html", form=form, invite_required=True)
+        if User.query.filter_by(email=form.email.data).first():
+            form.email.errors.append("Email already registered.")
+            return render_template("register.html", form=form, invite_required=bool(invite))
         user = User(email=form.email.data, name=form.name.data)
         user.set_password(form.password.data)
         db.session.add(user)
         db.session.commit()
         flash("Registration successful. Please log in.", "success")
         return redirect(url_for("main.login"))
-    return render_template("register.html", form=form)
+    return render_template("register.html", form=form, invite_required=bool(invite))
 
 
 # ------------------------------------------------------
@@ -147,8 +157,9 @@ def predict():
         try:
             # Empty fields stay None: the model must not read them as 0.
             data = _assessment_from_form(request.form)
+            custom = _custom_from_form(request.form)
         except ValueError as e:
-            err = str(e) if "obbligatori" in str(e) else "Valori non validi: usa numeri o lascia vuoto."
+            err = str(e) if isinstance(e, FormError) else "Valori non validi: usa numeri o lascia vuoto."
             data = None
 
         if data is not None:
@@ -171,6 +182,7 @@ def predict():
                         model_version=model["name"] if result else None,
                         **data,
                     )
+                    _store_custom(rec, custom)
                     db.session.add(rec)
                     db.session.commit()
                     saved_record_id = rec.id
@@ -228,11 +240,15 @@ def _bool_or_none(value: str | None) -> bool | None:
     return {"1": True, "0": False}.get((value or "").strip())
 
 
+class FormError(ValueError):
+    """Invalid input, with a message that can be shown to the user as is."""
+
+
 def _assessment_from_form(form) -> dict:
     """Pre-intubation fields shared by predict, new and edit. Raises ValueError if invalid."""
     age, weight = _int_or_none(form.get("age")), _float_or_none(form.get("weight"))
     if age is None or weight is None:
-        raise ValueError("Età e peso sono obbligatori.")
+        raise FormError("Età e peso sono obbligatori.")
     data = dict(
         age=age,
         weight=weight,
@@ -255,6 +271,34 @@ def _assessment_from_form(form) -> dict:
     return data
 
 
+def _custom_from_form(form) -> dict:
+    """Active custom fields -> parsed value (None if empty). Raises FormError listing every invalid field."""
+    values, errors = {}, []
+    for field in CustomField.query.filter_by(active=True).order_by(CustomField.id):
+        try:
+            values[field] = field.parse(form.get(f"cf_{field.id}"))
+        except ValueError as e:
+            errors.append(str(e) if field.label in str(e) else f"{field.label}: valore non valido.")
+    if errors:
+        raise FormError(" ".join(errors))
+    return values
+
+
+def _store_custom(rec: IntubationRecord, values: dict) -> None:
+    existing = {cv.field_id: cv for cv in rec.custom_values}
+    for field, value in values.items():
+        cv = existing.get(field.id)
+        if value is None:
+            if cv is not None:
+                rec.custom_values.remove(cv)
+            continue
+        if cv is None:
+            cv = CustomValue(field=field)
+            rec.custom_values.append(cv)
+        cv.value_num = value if field.kind == "number" else None
+        cv.value_choice = value if field.kind == "choice" else None
+
+
 def _apply_outcome(rec: IntubationRecord, form) -> None:
     rec.success = _bool_or_none(form.get("success"))
     rec.cormack = _int_or_none(form.get("cormack"))
@@ -269,8 +313,9 @@ def new_case():
     if request.method == "POST":
         try:
             rec = IntubationRecord(operator_id=current_user.id, **_assessment_from_form(request.form))
+            _store_custom(rec, _custom_from_form(request.form))
         except ValueError as e:
-            flash(str(e), "danger")
+            flash(str(e) if isinstance(e, FormError) else "Valori non validi: usa numeri o lascia vuoto.", "danger")
             return render_template("case_form.html", rec=None)
         _apply_outcome(rec, request.form)
         db.session.add(rec)
@@ -291,11 +336,13 @@ def edit_case(record_id: int):
     if request.method == "POST":
         try:
             data = _assessment_from_form(request.form)
+            custom = _custom_from_form(request.form)
         except ValueError as e:
-            flash(str(e), "danger")
+            flash(str(e) if isinstance(e, FormError) else "Valori non validi: usa numeri o lascia vuoto.", "danger")
             return render_template("case_form.html", rec=rec)
         for k, v in data.items():
             setattr(rec, k, v)
+        _store_custom(rec, custom)
         _apply_outcome(rec, request.form)
         db.session.commit()
         flash("Caso aggiornato.", "success")
@@ -332,114 +379,112 @@ def analytics():
 
 @bp.app_context_processor
 def _inject_choices():
-    return {"NECK_MOVEMENT_CHOICES": NECK_MOVEMENT_CHOICES, "HISTORY_CHOICES": HISTORY_CHOICES}
+    return {"NECK_MOVEMENT_CHOICES": NECK_MOVEMENT_CHOICES, "HISTORY_CHOICES": HISTORY_CHOICES,
+            "custom_fields": lambda: CustomField.query.filter_by(active=True).order_by(CustomField.id).all()}
 
 
 # ------------------------------------------------------
-# BLOG
+# VARIABILI AGGIUNTIVE (admin) e EXPORT per l'allenamento offline
 # ------------------------------------------------------
-def _blog_posts():
-    # You will later add images into: app/static/blog/
-    return [
-        {
-            "slug": "difficult-intubation-theory",
-            "title": "Difficult Intubation: Clinical Theory and Airway Assessment",
-            "subtitle": "A practical overview of predictors, grading systems, and why difficulty happens.",
-            "img": "blog/airway_overview.jpg",
-        },
-        {
-            "slug": "prediction-models",
-            "title": "Prediction Models: Logistic Regression, Neural Networks, Hybrid and Distillation",
-            "subtitle": "How the risk score is computed and why hybrid models are useful.",
-            "img": "blog/ml_models.jpg",
-        },
-        {
-            "slug": "how-this-site-works",
-            "title": "How This Website Works (Data, Privacy, Training Loop, Visualizations)",
-            "subtitle": "System architecture, data lifecycle, and what you see in Analytics.",
-            "img": "blog/site_architecture.jpg",
-        },
-    ]
+def _require_admin() -> None:
+    if not current_user.is_authenticated or not current_user.is_admin:
+        abort(403)
+
+
+@bp.route("/variabili", methods=["GET", "POST"])
+@login_required
+def custom_fields():
+    form = CustomFieldForm()
+    if request.method == "POST":
+        _require_admin()
+        if form.validate_on_submit():
+            if CustomField.query.filter_by(key=form.key.data).first():
+                form.key.errors.append("Esiste già una variabile con questo nome breve.")
+            else:
+                field = CustomField(created_by_id=current_user.id)
+                form.populate_obj(field)
+                if field.kind == "choice":
+                    field.unit = field.min_value = field.max_value = None
+                else:
+                    field.choices = None
+                db.session.add(field)
+                db.session.commit()
+                flash(f'Variabile "{field.label}" aggiunta: compare ora nel form Valuta.', "success")
+                return redirect(url_for("main.custom_fields"))
+    fields = CustomField.query.order_by(CustomField.id).all()
+    counts = dict(db.session.query(CustomValue.field_id, db.func.count(CustomValue.id))
+                  .group_by(CustomValue.field_id).all())
+    return render_template("custom_fields.html", form=form, fields=fields, counts=counts, toggle=ToggleForm())
+
+
+@bp.route("/variabili/<int:field_id>/attiva", methods=["POST"])
+@login_required
+def toggle_custom_field(field_id: int):
+    _require_admin()
+    if not ToggleForm().validate_on_submit():
+        abort(400)
+    field = db.session.get(CustomField, field_id) or abort(404)
+    field.active = not field.active  # never deleted: values already collected stay in the database
+    db.session.commit()
+    state = "riattivata" if field.active else "disattivata"
+    flash(f'Variabile "{field.label}" {state}.', "success")
+    return redirect(url_for("main.custom_fields"))
+
+
+EXPORT_COLUMNS = ["age", "sex", "weight", "height", "asa", "emergency", "dii", "dtm", "mallampati",
+                  "neck_movement", "can_prognath", "history_difficult", "stop_bang", "alganzouri",
+                  "predicted_proba", "model_version", "cormack", "cormack_device", "success", "difficult_binary"]
+
+
+@bp.route("/export.csv")
+@login_required
+def export_csv():
+    """Pseudonymized cases for offline training: no names, no free-text fields (they may contain identifiers)."""
+    _require_admin()
+    fields = CustomField.query.order_by(CustomField.id).all()
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["case_id", "operator_id", "created_at"] + EXPORT_COLUMNS + [f"x_{f.key}" for f in fields])
+    for rec in IntubationRecord.query.order_by(IntubationRecord.id):
+        extra = {cv.field_id: cv.value for cv in rec.custom_values}
+        row = [rec.id, rec.operator_id, rec.created_at.date().isoformat() if rec.created_at else ""]
+        row += ["" if getattr(rec, c) is None else getattr(rec, c) for c in EXPORT_COLUMNS]
+        row += ["" if extra.get(f.id) is None else extra[f.id] for f in fields]  # empty = missing, never 0
+        w.writerow(row)
+    return Response(out.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=intub-casi.csv"})
+
+
+# ------------------------------------------------------
+# IMPARA (ex blog): one template per post in templates/learn/
+# ------------------------------------------------------
+LEARN_POSTS = [
+    {"slug": "laringoscopia-difficile", "title": "Laringoscopia difficile: Cormack, Mallampati, El-Ganzouri",
+     "subtitle": "Che cosa vogliamo prevedere, con quali segni clinici, e perché lo strumento cambia l'esito."},
+    {"slug": "valutare-un-modello", "title": "Come si valuta un modello di rischio",
+     "subtitle": "AUC, calibrazione, soglia del 15% e decision curve, con i numeri del nostro studio."},
+    {"slug": "bias-probast", "title": "Il rischio di bias: PROBAST applicato al nostro studio",
+     "subtitle": "Quattro domini per decidere quanto fidarsi di un modello di predizione."},
+    {"slug": "discesa-del-gradiente", "title": "Come impara una logistica: la discesa del gradiente",
+     "subtitle": "La superficie di errore vera, calcolata su pazienti reali, e il percorso passo per passo."},
+    {"slug": "overfitting", "title": "Rete neurale e overfitting",
+     "subtitle": "Perché con pochi eventi una rete impara a memoria, e come lo si vede."},
+    {"slug": "studio-obesi", "title": "Lo studio sugli obesi: cosa abbiamo trovato",
+     "subtitle": "Protocollo, risultati e perché un risultato negativo è comunque un risultato."},
+    {"slug": "studio-tiroide", "title": "Lo studio sulla chirurgia tiroidea (Padova)",
+     "subtitle": "500 pazienti con gli item di El-Ganzouri: il modello batte la regola del 1996?"},
+]
 
 
 @bp.route("/blog")
 def blog():
-    return render_template("blog.html", posts=_blog_posts())
+    return render_template("blog.html", posts=LEARN_POSTS)
 
 
 @bp.route("/blog/<slug>")
 def blog_post(slug: str):
-    posts = {p["slug"]: p for p in _blog_posts()}
-    post = posts.get(slug)
+    post = next((p for p in LEARN_POSTS if p["slug"] == slug), None)
     if not post:
         abort(404)
-
-    # Content blocks (simple HTML strings for now).
-    # You can later replace with Markdown, database content, etc.
-    if slug == "difficult-intubation-theory":
-        sections = [
-            {
-                "h": "Why intubation becomes difficult",
-                "p": "Difficult intubation generally results from reduced laryngoscopic view, limited mouth opening, reduced cervical mobility, unfavorable anatomy, or a combination. Clinically we distinguish difficulty in mask ventilation, supraglottic placement, laryngoscopy view, and tube passage—each has different predictors and rescue strategies.",
-                "img": "blog/laryngoscopy_view.jpg",
-                "caption": "Example airway view and the concept of limited glottic exposure.",
-            },
-            {
-                "h": "Cormack–Lehane and what it means operationally",
-                "p": "Cormack–Lehane grading is a pragmatic proxy of laryngeal view. Grades 3–4 often correlate with increased attempts and need for adjuncts. In this project, the binary outcome “difficult” is defined as Cormack > 2 (i.e., grades 3–4).",
-                "img": "blog/cormack_scale.jpg",
-                "caption": "Cormack–Lehane grading (add your own diagram image here).",
-            },
-            {
-                "h": "Pre-intubation predictors used here",
-                "p": "The input features mirror common bedside assessment: Mallampati, thyromental distance (DTM), interincisor distance (DII), STOP-BANG, and composite scores (e.g., El-Ganzouri). These are not perfect predictors individually; their value increases when combined and calibrated on local case-mix.",
-                "img": "blog/assessment_tools.jpg",
-                "caption": "Airway assessment measures used as model inputs.",
-            },
-        ]
-
-    elif slug == "prediction-models":
-        sections = [
-            {
-                "h": "Logistic regression: calibrated baseline",
-                "p": "Logistic regression is a strong baseline for clinical risk scoring: interpretable coefficients, stable training on small data, and usually good calibration. It produces a probability p(difficult) used for thresholding and ROC analysis.",
-                "img": "blog/logreg_explained.jpg",
-                "caption": "Logistic regression as a calibrated probability model.",
-            },
-            {
-                "h": "Neural networks: non-linear feature interactions",
-                "p": "A shallow NN can capture non-linear interactions (e.g., combinations of DTM + Mallampati + mouth opening). When data is limited, regularization and careful validation are essential, and the NN should not be trusted blindly without monitoring drift and calibration.",
-                "img": "blog/nn_explained.jpg",
-                "caption": "Shallow NN (1 hidden layer) capturing interactions.",
-            },
-            {
-                "h": "Hybrid + distillation (why)",
-                "p": "Hybrid models let the logistic regression guide learning (teacher) while the NN learns residual patterns (student). Distillation is a practical compromise: you train locally with heavier tooling (torch), then deploy only a lightweight distilled model for inference/visualization where torch is unavailable.",
-                "img": "blog/hybrid_distill.jpg",
-                "caption": "Teacher–student / distillation concept (add your own diagram).",
-            },
-        ]
-
-    else:  # how-this-site-works
-        sections = [
-            {
-                "h": "Workflow: Predict → Save pending → Complete outcome",
-                "p": "The clinician can run a prediction pre-procedure and optionally save the case as “pending”. After intubation, the outcome (Cormack, success, difficult yes/no) is entered from the dashboard. Completed cases expand the training dataset.",
-                "img": "blog/workflow.jpg",
-                "caption": "Data lifecycle: prediction and deferred labeling.",
-            },
-            {
-                "h": "Analytics: ROC, NN diagram, loss landscape",
-                "p": "Analytics provides (1) ROC curve with reference diagonal, (2) NN architecture visualization, and (3) a pedagogical loss surface that illustrates gradient descent. The loss surface axes are abstracted parameters (two degrees of freedom) and the color/height indicates loss.",
-                "img": "blog/analytics_panels.jpg",
-                "caption": "Analytics panels overview (add a screenshot later).",
-            },
-            {
-                "h": "Privacy and intended use",
-                "p": "This is a decision-support tool, not a replacement for clinical judgment. Store only necessary data, keep access controlled, and treat model outputs as probabilistic signals requiring clinical validation and governance.",
-                "img": "blog/privacy.jpg",
-                "caption": "Privacy-by-design (insert your own visual).",
-            },
-        ]
-
-    return render_template("blog_post.html", post=post, sections=sections)
+    return render_template(f"learn/{slug}.html", post=post, posts=LEARN_POSTS,
+                           model=active_model(), teaching=teaching_data(), studies=study_models())

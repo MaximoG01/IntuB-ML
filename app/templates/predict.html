@@ -14,8 +14,8 @@
     <div>
       <h3>Modello statistico</h3>
       {% if result %}
-        <p class="result-number">{{ (result.probability * 100)|round(1) }}%</p>
-        <div class="meter" role="img" aria-label="rischio {{ (result.probability * 100)|round(1) }}% su soglia {{ (threshold * 100)|round|int }}%">
+        <p class="result-number">{{ result.probability|pct }}</p>
+        <div class="meter" role="img" aria-label="rischio {{ result.probability|pct }} su soglia {{ (threshold * 100)|round|int }}%">
           <div class="meter-fill" style="width: {{ [result.probability / 0.30 * 100, 100]|min }}%"></div>
           <div class="meter-threshold" style="left: {{ threshold / 0.30 * 100 }}%"></div>
         </div>
@@ -24,10 +24,10 @@
         </p>
         <p class="muted small">Fattori che pesano di più:</p>
         <ul class="factors">
-          {% for c in result.contributions[:3] %}
+          {% for c in result.contributions if not c.fixed %}{% if loop.index <= 3 %}
             <li>{{ "+" if c.contribution > 0 else "−" }} {{ c.label }}
               {% if c.imputed %}<span class="muted">(mancante: usata la mediana)</span>{% endif %}</li>
-          {% endfor %}
+          {% endif %}{% endfor %}
         </ul>
       {% else %}
         <p class="muted">Nessun modello attivo.</p>
@@ -45,11 +45,17 @@
     </div>
   </div>
   {% if model %}
+    {% set td = model.training_data %}
+    {% set r = model.validation.results[model.primary or "Logistica penalizzata (L2)"] %}
     <p class="muted small model-note">
-      Modello <strong>{{ model.name }}</strong>: allenato su {{ model.training_data.source }}
-      ({{ model.training_data.n }} pazienti) con <strong>soli dati demografici</strong> (età, sesso, BMI, ASA, urgenza);
-      discrimina poco (AUC ≈ {{ model.validation.results["Logistica penalizzata (L2)"].metrics.auc.mean|round(2) }}).
-      Gli item delle vie aeree entrano solo nel punteggio El-Ganzouri. <a href="{{ url_for('main.analytics') }}">Dettagli</a>
+      Modello <strong>{{ model.name }}</strong>: allenato su {{ td.source }} ({{ td.n }} pazienti{% if td.population %}, {{ td.population }}{% endif %}),
+      variabili: {{ model.features|map("feature_label")|join(", ") }}{% if model.fixed %}
+      (predizione per lama Macintosh){% endif %}.
+      {% set auc = (r.auc_fold or r.metrics.auc).mean %}
+      AUC ≈ {{ "%.2f"|format(auc) }}{% if auc < 0.6 %}: discrimina poco, il numero è vicino alla frequenza media del
+      dataset di allenamento ({{ "%.0f"|format(td.prevalence * 100) }}%){% else %}; frequenza del Cormack 3–4 nei dati
+      di allenamento {{ "%.0f"|format(td.prevalence * 100) }}%: in un'altra popolazione il rischio può essere diverso{% endif %}.
+      <a href="{{ url_for('main.analytics') }}">Dettagli</a>
     </p>
   {% endif %}
   {% if saved_record_id %}<p class="ok">Caso salvato (n. {{ saved_record_id }}).</p>{% endif %}
@@ -57,6 +63,7 @@
 {% endif %}
 
 <form method="post" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% include "_assessment_fields.html" %}
   <p>
     <button class="btn btn-primary" type="submit" name="action" value="predict">Calcola rischio</button>

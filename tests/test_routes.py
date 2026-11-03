@@ -11,6 +11,22 @@ def test_pages_respond(client):
     assert client.get("/seed-db-secret-key-12345").status_code == 404
 
 
+def test_learn_pages_respond(client):
+    from app.routes import LEARN_POSTS
+    for p in LEARN_POSTS:
+        assert client.get(f"/blog/{p['slug']}").status_code == 200, p["slug"]
+    assert client.get("/blog/non-esiste").status_code == 404
+
+
+def test_register_then_login(client):
+    data = {"name": "Nuovo", "email": "nuovo@example.org", "password": "segreta1", "password2": "segreta1"}
+    assert client.post("/register", data=data).status_code == 302
+    body = client.post("/register", data=data).get_data(as_text=True)
+    assert "already registered" in body
+    resp = client.post("/login", data={"email": "nuovo@example.org", "password": "segreta1"})
+    assert resp.status_code == 302
+
+
 def test_predict_shows_model_and_egri(client):
     body = client.post("/predict", data=ASSESSMENT).get_data(as_text=True)
     # 1 (mouth) + 2 (TMD) + 2 (Mallampati III) + 1 (neck) + 1 (prognath) + 1 (weight) + 0 = 8

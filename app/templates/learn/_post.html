@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} — intuB{% endblock %}
+{% block content %}
+{% set idx = posts|map(attribute="slug")|list %}
+{% set i = idx.index(post.slug) %}
+<article class="learn">
+  <p><a href="{{ url_for('main.blog') }}">← Impara</a></p>
+  <h1>{{ post.title }}</h1>
+  <p class="muted">{{ post.subtitle }}</p>
+
+  {% block post %}{% endblock %}
+
+  {% if self.references() %}
+  <section class="refs">
+    <h3>Fonti</h3>
+    <ul class="small">{% block references %}{% endblock %}</ul>
+  </section>
+  {% endif %}
+
+  <nav class="learn-nav">
+    {% if i > 0 %}<a href="{{ url_for('main.blog_post', slug=posts[i - 1].slug) }}">← {{ posts[i - 1].title }}</a>{% else %}<span></span>{% endif %}
+    {% if i < posts|length - 1 %}<a href="{{ url_for('main.blog_post', slug=posts[i + 1].slug) }}">{{ posts[i + 1].title }} →</a>{% endif %}
+  </nav>
+</article>
+{% endblock %}

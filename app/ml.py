@@ -123,8 +123,8 @@ def _load_xy(min_samples: int = 50) -> Tuple[np.ndarray, np.ndarray, str]:
     n_difficult = sum(1 for r in records if r.difficult_binary)
     if len(records) < min_samples or n_difficult < 2 or len(records) - n_difficult < 2:
         raise InsufficientDataError(
-            f"Not enough labeled cases to train a model: {len(records)} cases "
-            f"({n_difficult} difficult). At least {min_samples} are needed, with both outcomes present."
+            f"Casi con esito non sufficienti per un controllo: {len(records)} casi "
+            f"({n_difficult} difficili). Ne servono almeno {min_samples}, con entrambi gli esiti."
         )
     X = np.array([build_feature_vector(r) for r in records], dtype=float)
     y = np.array([1.0 if r.difficult_binary else 0.0 for r in records], dtype=float)

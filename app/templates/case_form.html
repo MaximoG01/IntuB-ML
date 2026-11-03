@@ -5,6 +5,7 @@
 <h2>{% if rec %}Modifica caso n. {{ rec.id }}{% else %}Nuovo caso{% endif %}</h2>
 
 <form method="post" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% include "_assessment_fields.html" %}
   {% include "_outcome_fields.html" %}
   <p>

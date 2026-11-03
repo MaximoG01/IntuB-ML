@@ -1,0 +1,71 @@
+{% extends "learn/_post.html" %}
+{% block post %}
+<h2>Che cos'è un bias</h2>
+<p>Un bias è un errore <strong>sistematico</strong>: non si riduce aumentando i pazienti, perché viene da come sono
+  stati scelti i pazienti, misurati i predittori o l'esito, o da come è stata fatta l'analisi. L'errore casuale
+  invece si riduce con più dati e si vede negli intervalli di confidenza.</p>
+<p>Per i modelli di predizione lo strumento standard è <strong>PROBAST</strong>: 4 domini, 20 domande guida. Per
+  ogni dominio si giudica il <em>rischio di bias</em> (basso, alto, incerto) e, nei primi tre, la
+  <em>preoccupazione per l'applicabilità</em>: quanto lo studio risponde alla <strong>nostra</strong> domanda clinica.
+  Se anche un solo dominio è ad alto rischio, il giudizio complessivo è alto.</p>
+
+<h2>I quattro domini</h2>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Dominio</th><th>Domande tipiche</th></tr></thead>
+  <tbody>
+    <tr><td>1. Partecipanti</td><td>Da che tipo di studio vengono i dati? Chi è stato incluso o escluso, e perché?</td></tr>
+    <tr><td>2. Predittori</td><td>Misurati allo stesso modo per tutti? Senza conoscere l'esito? Disponibili al momento in cui il modello si usa?</td></tr>
+    <tr><td>3. Esito</td><td>Definito in modo standard e uguale per tutti? Valutato senza conoscere i predittori?</td></tr>
+    <tr><td>4. Analisi</td><td>Abbastanza eventi? Variabili continue non tagliate in classi? Mancanti gestiti bene? Selezione delle variabili non basata sulle associazioni univariate? Calibrazione e overfitting valutati?</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Il giudizio sui nostri studi</h2>
+{% for name, m in studies.items() if m.probast %}
+<h3>{{ m.training_data.source }}</h3>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Dominio</th><th>Rischio di bias</th><th>Applicabilità</th></tr></thead>
+  <tbody>
+    {% for d in m.probast.domains %}
+    <tr><td>{{ d.domain }}</td>
+      <td><strong>{{ d.risk }}</strong> — {{ d.why }}</td>
+      <td>{% if d.applicability %}<strong>{{ d.applicability }}</strong> — {{ d.applicability_why }}{% else %}—{% endif %}</td></tr>
+    {% endfor %}
+    <tr class="row-active"><td>Complessivo</td><td><strong>{{ m.probast.overall.risk }}</strong></td>
+      <td><strong>{{ m.probast.overall.applicability }}</strong></td></tr>
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="muted">Nessuno studio con valutazione PROBAST.</p>
+{% endfor %}
+<p>Il giudizio "alto" non vuol dire che uno studio sia inutile: vuol dire che i suoi numeri <strong>non vanno usati
+  per decidere</strong> su pazienti reali. Resta utile per imparare il metodo e per capire che dati servono.</p>
+
+<h2>Lo stesso strumento, bias diversi</h2>
+<ul>
+  <li><strong>Obesi</strong>: il problema principale è l'<em>esito</em> (metà dei Cormack con videolaringoscopio, che
+    migliora la visione) e i soli 18 eventi.</li>
+  <li><strong>Tiroide</strong>: il problema principale sono i <em>partecipanti</em>. Escludere chi aveva
+    un'intubazione difficile prevista toglie i casi più evidenti: è un bias di spettro, e fa sembrare i predittori
+    meno utili di quanto sono.</li>
+  <li>In entrambi l'<em>analisi</em> ha pochi eventi rispetto ai predittori: l'unico rimedio vero sono più dati,
+    raccolti con l'esame completo delle vie aeree, il Cormack con lama Macintosh e nessuna esclusione a priori.</li>
+</ul>
+
+<h2>Perché non un confronto "a rete" tra dataset</h2>
+<p>Una network meta-analysis confronta trattamenti che non sono mai stati messi a confronto diretto, passando per un
+  braccio comune (A contro B e B contro C dicono qualcosa su A contro C). Qui non c'è niente del genere: VitalDB, lo
+  studio sugli obesi e quello sulla tiroide sono <strong>campioni diversi</strong> con variabili diverse, non bracci con un comparatore in
+  comune. Si possono confrontare solo in modo descrittivo, oppure validando un modello sull'altro dataset
+  (trasferibilità), che è quello che abbiamo fatto.</p>
+{% endblock %}
+{% block references %}
+<li>Wolff RF et al. PROBAST: a tool to assess the risk of bias and applicability of prediction model studies.
+  Ann Intern Med 2019;170:51-58.</li>
+<li>Moons KGM et al. PROBAST: explanation and elaboration. Ann Intern Med 2019;170:W1-W33.</li>
+<li>Riley RD et al. Calculating the sample size required for developing a clinical prediction model. BMJ 2020;368:m441.</li>
+{% endblock %}

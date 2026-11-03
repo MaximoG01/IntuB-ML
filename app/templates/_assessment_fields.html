@@ -53,6 +53,36 @@
   <p class="muted">Il punteggio El-Ganzouri (0–12) viene calcolato dagli item; il peso è quello inserito sopra.</p>
 </fieldset>
 
+{% set extra_fields = custom_fields() %}
+{% if extra_fields %}
+{% set saved = {} %}
+{% if rec is defined and rec %}{% for cv in rec.custom_values %}{% set _ = saved.update({cv.field_id: cv.value}) %}{% endfor %}{% endif %}
+<fieldset class="form-section">
+  <legend>Variabili aggiuntive</legend>
+  <div class="form-grid">
+    {% for f in extra_fields %}
+      {% set name = "cf_" ~ f.id %}
+      {% set current = request.form.get(name) if request.form.get(name) is not none
+                       else ("" if saved.get(f.id) is none else (saved[f.id]|string)) %}
+      <div><label for="{{ name }}">{{ f.label }}{% if f.unit %} ({{ f.unit }}){% endif %}</label>
+        {% if f.kind == "number" %}
+          <input id="{{ name }}" name="{{ name }}" type="number" step="any"
+                 {% if f.min_value is not none %}min="{{ f.min_value }}"{% endif %}
+                 {% if f.max_value is not none %}max="{{ f.max_value }}"{% endif %} value="{{ current }}">
+        {% else %}
+          <select id="{{ name }}" name="{{ name }}">
+            <option value="">—</option>
+            {% for c in f.choice_list %}<option value="{{ c }}" {% if current == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+          </select>
+        {% endif %}
+        {% if f.help_text %}<p class="muted small">{{ f.help_text }}</p>{% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  <p class="muted small">Variabili raccolte per studi futuri: non entrano nel calcolo del rischio finché non c'è un modello allenato anche su di esse.</p>
+</fieldset>
+{% endif %}
+
 <fieldset class="form-section">
   <legend>Altro</legend>
   <div class="form-grid">

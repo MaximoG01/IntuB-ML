@@ -9,6 +9,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     name = db.Column(db.String(128), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)  # <--- PIÙ LUNGO
+    is_admin = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     records = db.relationship("IntubationRecord", backref="operator", lazy="dynamic")
 
@@ -70,3 +71,61 @@ class IntubationRecord(db.Model):
 
     def __repr__(self):
         return f"<IntubationRecord {self.id}>"
+
+
+class CustomField(db.Model):
+    """
+    Extra pre-intubation variable defined by an admin (e.g. neck circumference, upper lip bite test).
+    Only numbers with unit and choices from a list: no free text, so no identifying data can be typed in.
+    """
+    KINDS = ("number", "choice")
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(40), unique=True, nullable=False)  # column name in the export
+    label = db.Column(db.String(80), nullable=False)
+    kind = db.Column(db.String(10), nullable=False)
+    unit = db.Column(db.String(16))
+    min_value = db.Column(db.Float)
+    max_value = db.Column(db.Float)
+    choices = db.Column(db.String(400))  # "I|II|III" for kind == "choice"
+    help_text = db.Column(db.String(200))
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def choice_list(self):
+        return [c for c in (self.choices or "").split("|") if c]
+
+    def parse(self, raw: str | None):
+        """Form text -> stored value (float or choice), None if empty. Raises ValueError if invalid."""
+        raw = (raw or "").strip()
+        if not raw:
+            return None
+        if self.kind == "number":
+            v = float(raw.replace(",", "."))
+            if (self.min_value is not None and v < self.min_value) or (self.max_value is not None and v > self.max_value):
+                lo = "" if self.min_value is None else f"{self.min_value:g}"
+                hi = "" if self.max_value is None else f"{self.max_value:g}"
+                raise ValueError(f"{self.label}: valore fuori dall'intervallo {lo}–{hi} {self.unit or ''}".strip() + ".")
+            return v
+        if raw not in self.choice_list:
+            raise ValueError(f"{self.label}: scelta non valida.")
+        return raw
+
+
+class CustomValue(db.Model):
+    """Value of a CustomField for one case. A missing value is a missing row, never 0."""
+    id = db.Column(db.Integer, primary_key=True)
+    record_id = db.Column(db.Integer, db.ForeignKey("intubation_record.id", ondelete="CASCADE"), nullable=False)
+    field_id = db.Column(db.Integer, db.ForeignKey("custom_field.id"), nullable=False)
+    value_num = db.Column(db.Float)
+    value_choice = db.Column(db.String(60))
+    __table_args__ = (db.UniqueConstraint("record_id", "field_id"),)
+
+    field = db.relationship("CustomField")
+    record = db.relationship("IntubationRecord", backref=db.backref("custom_values", cascade="all, delete-orphan"))
+
+    @property
+    def value(self):
+        return self.value_num if self.value_num is not None else self.value_choice

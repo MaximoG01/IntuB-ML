@@ -9,6 +9,7 @@
 </p>
 
 <form method="post" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% include "_outcome_fields.html" %}
   <p>
     <button class="btn btn-primary" type="submit">Salva esito</button>

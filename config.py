@@ -17,4 +17,6 @@ class Config:
         SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace("postgres://", "postgresql://", 1)
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # If set, registration requires this code (shared app). Unset = open registration (local development).
+    INVITE_CODE = os.environ.get("INVITE_CODE") or None
     WTF_CSRF_ENABLED = True

@@ -79,7 +79,7 @@ Non risultano dataset aperti con Cormack **e** esame completo delle vie aeree (M
 |---|---|---|---|
 | **VitalDB** (Seoul National Univ. Hospital), su PhysioNet | **aperto**, CC-BY 4.0 | 6.388 interventi; `cormack` per 5.553: I 5.178, II 235, IIIa 91, IIIb 35, IV 14 → **140 casi 3–4 (2,5%)**; età, sesso, altezza, peso, BMI, ASA, tipo di intervento, esami pre-op. **Nessun Mallampati** né altro esame vie aeree | modello "solo dati demografici" come confronto; studio della prevalenza; test della pipeline su dati veri |
 | **MIMIC-IV** (PhysioNet) | credenziali + corso CITI | terapia intensiva; intubazioni presenti; Cormack/Mallampati probabilmente solo nelle note libere | da verificare (MIMIC-IV-Note) |
-| R `medicaldata::laryngoscope` | aperto | RCT ~100 obesi, Pentax AWS vs Macintosh | solo didattico |
+| R `medicaldata::laryngoscope` | aperto, MIT | RCT 99 obesi, Pentax AWS vs Macintosh; **Mallampati** + Cormack 1–2 vs 3–4 | **dataset principale dal 02/11/2026** (§10) |
 | Studi pubblicati (es. Frontiers Public Health 2022, dati su BioStudies) | da verificare | variabili demografiche, ML a confronto | da verificare |
 | Database nazionali (danese DAD, MPOG USA) | su richiesta/consorzio | grandi coorti con valutazione vie aeree | richiesta formale di collaborazione |
 
@@ -159,6 +159,13 @@ Funzionali:
 - R3 Pagina "Modello": metriche §6, versione del modello, data, dati usati (sintetici/reali).
 - R4 Esportazione dati pseudonimizzati per l'allenamento offline (solo utenti autorizzati).
 - R5 Caricamento di una nuova versione del modello senza modificare il codice.
+- R6 ✅ 03/11/2026 — **Variabili aggiuntive** definite dall'amministratore (pagina "Variabili"): solo
+  numero con unità e intervallo ammesso, o scelta da lista; niente testo libero (rischio di dati
+  identificativi). Si disattivano, non si cancellano. Valore mancante = nessuna riga, mai 0.
+  Non entrano nella predizione finché un modello non è allenato su di esse.
+- R4 ✅ 03/11/2026 — Export CSV pseudonimizzato (solo admin): senza nomi né campi di testo libero.
+- R7 ✅ 03/11/2026 — Condivisione in rete locale (`avvia_rete_locale.ps1`, server waitress) con
+  registrazione solo tramite **codice invito** (`INVITE_CODE`) e ruolo admin (`flask make-admin`).
 
 Non funzionali:
 - N1 Nessun dato identificativo del paziente (nome, data di nascita, n. cartella) nel DB.
@@ -182,6 +189,7 @@ Non funzionali:
 | 9 | ✅ Rimossi script di debug/test e deploy Heroku; vecchi .md in `docs/legacy/` | radice | — |
 | 10 | ✅ Rimosso `wsl_import.sh` con **password del DB Heroku in chiaro**; storia git ripulita | radice | — |
 | 11 | `app/nn_viz.py` e `app/ml_nn.py` non più usati dalle pagine (da spostare in `training/` o in "Impara") | `app/` | bassa |
+| 13 | ✅ 03/11/2026 — I form HTML di Valuta, nuovo caso, modifica ed esito **non avevano protezione CSRF** (solo i form WTForms la avevano): ora `CSRFProtect` è attivo su tutte le POST | `app/__init__.py` | — |
 | 12 | Punti Mallampati EGRI: le fonti secondarie non concordano (I=0, II=1, III–IV=2 usato qui) → verificare sul lavoro originale | `app/egri.py` | media |
 
 ## 9. Risultati — VitalDB (31/10/2026)
@@ -203,3 +211,141 @@ Conclusioni:
   (esame delle vie aeree). Rivalutare la soglia con la decision curve quando ci saranno quei dati.
 - Odds ratio per 1 DS: età 1,25 · sesso maschile 1,24 · BMI 1,15 · ASA 0,94 · urgenza 0,94.
 - Prima prova con altezza + peso + BMI: coefficienti opposti e instabili (collinearità) → tenuto solo il BMI.
+- **02/11/2026: VitalDB non è più il dataset principale.** Ha solo variabili antropometriche e il
+  Cormack, nessun esame delle vie aeree: non risponde alla domanda del §1. Il codice resta come
+  esempio di pipeline; il modello `vitaldb-demo-lr-v1` resta in `models/` e viene usato solo come
+  test di trasferibilità sugli obesi (§10). Un confronto "a rete" tra dataset non è possibile:
+  campioni diversi, nessun braccio in comune.
+
+## 10. Studio sugli obesi (`medicaldata::laryngoscope`) — protocollo
+
+Pre-specificato il 02/11/2026, **prima** di guardare le prestazioni dei modelli
+(già visti solo: numero di casi, prevalenza, tabelle Cormack × strumento e × Mallampati).
+
+**Dati.** Abdallah et al., *Anesth Analg* 2011;113:1082-7: RCT, 99 adulti con BMI 30–50,
+chirurgia elettiva, randomizzati a Macintosh n.4 vs Pentax AWS. Pacchetto R `medicaldata`
+(licenza MIT), file `data/laryngoscope.rda` al commit `be27ec8`; citare anche Nowacki AS,
+TSHS Resources Portal 2017.
+
+**Esito.** Cormack 3–4 = `view == 0`. La documentazione del pacchetto si contraddice
+("1 = good = Cormack 3 or 4"): letta alla lettera darebbe l'82% di Cormack 3–4. Verifica sui
+dati: con `view = 0` facilità media 78/100 vs 38, tempo 56 s vs 33, successo al primo tentativo
+67% vs 94%. Quindi 0 = visione cattiva = Cormack 3–4 → **18 eventi su 99 (18%)**.
+
+**Predittori (5, fissati ora).** Mallampati (1–4, lineare), BMI, età, sesso maschile,
+videolaringoscopio (randomizzato, noto prima della laringoscopia). Nell'app la predizione si fa
+per la **lama Macintosh** (videolaringoscopio = 0), perché l'esito del §1 è la laringoscopia diretta.
+ASA escluso: non è un predittore delle vie aeree e con 18 eventi ogni grado di libertà conta.
+Il punteggio El-Ganzouri **non è calcolabile** (mancano 5 item su 7, peso compreso).
+
+**Modelli** (stessa pipeline e stessi fold):
+- Nessun modello (prevalenza).
+- Solo Mallampati (logistica a 1 variabile): riferimento clinico al posto di M0.
+- **Logistica penalizzata L2 sui 5 predittori: modello principale**, scelto ora.
+- Gradient boosting e rete neurale piccola: solo per mostrare l'overfitting con pochi eventi.
+
+**Validazione.** CV stratificata 5 fold × 20 ripetizioni (imputazione e standardizzazione
+dentro i fold, penalizzazione con CV annidata); IC 95% dell'AUC con bootstrap; per il modello
+principale anche **bootstrap con correzione dell'ottimismo** (Harrell, 500 campioni), che
+stima quanto il modello è ottimista e quanto andrebbe "ristretto" (shrinkage).
+Soglia 0,15, decision curve, calibrazione come §6.
+
+**Analisi secondarie.** (a) Sola lama Macintosh (n = 49). (b) Trasferibilità: il modello
+VitalDB applicato a questi pazienti (tutti elettivi). (c) Numerosità minima con i criteri di
+Riley (BMJ 2020). (d) Rischio di bias e applicabilità con **PROBAST** (Wolff et al., Ann Intern
+Med 2019), dominio per dominio.
+
+### 10.1 Risultati (02/11/2026) — `models/laryngoscope-lr-v1/`
+
+| Modello | AUC per fold (variabilità tra ripetizioni) | Segnalati @15% |
+|---|---|---|
+| Nessun modello | 0,50 | 100% |
+| Solo Mallampati | 0,47 (0,34–0,56) | 83% |
+| **Logistica penalizzata (attivo)** | **0,54** (0,45–0,60) | 85% |
+| Gradient boosting | 0,56 (0,47–0,64) | 44% |
+| Rete neurale MLP 8 | 0,49 (0,37–0,56) | 67% |
+
+- **Nessun segnale.** La penalizzazione scelta con CV annidata porta i coefficienti quasi a zero
+  (C = 0,006): il modello dà a quasi tutti ~18%, sopra soglia. AUC corretta con bootstrap 0,54.
+- Logistica senza penalizzazione: AUC apparente 0,64 → corretta 0,53, pendenza di calibrazione
+  corretta 0,52 (overfitting tipico).
+- Mallampati non discrimina qui: Cormack 3–4 ~18% nelle classi 1, 2 e 3.
+- Solo Macintosh (49 pazienti, 11 eventi): AUC 0,58, troppo pochi eventi per concludere.
+- Modello VitalDB su questi pazienti: AUC 0,56 (IC 0,40–0,73), rischio medio previsto 3,7% contro
+  18,2% osservato → sottostima di ~5 volte, nessuno segnalato.
+- Riley: servono 465 pazienti (85 eventi); disponibili 99 (18).
+- PROBAST: rischio di bias **alto** (esito con due strumenti e non in cieco; 3,6 eventi per
+  predittore), applicabilità **preoccupazione alta** (solo obesi, solo Mallampati).
+- **Nota di metodo**: con pochi eventi l'AUC sulle predizioni out-of-fold riunite è falsata verso il
+  basso per i modelli deboli (il modello nullo dava 0,31); si usa l'AUC dentro ogni fold
+  (`evaluate.fold_auc`) e il bootstrap con correzione dell'ottimismo.
+- Il modello attivo dell'app è ora `laryngoscope-lr-v1` (predizione per lama Macintosh); in pratica
+  equivale a "in un obeso prepara sempre il piano B" e non distingue tra pazienti.
+
+## 11. Studio sulla chirurgia tiroidea (Padova) — protocollo
+
+Pre-specificato il 02/11/2026. **Già visti prima di scriverlo**: numero di eventi e tabelle
+univariate di Mallampati ≥ III, El-Ganzouri ≥ 4, DTM ≤ 6,5, apertura bocca, collo, storia,
+circonferenza del collo e BMI contro il Cormack (tutti associati tranne il collo, debole).
+Non visti: nessun modello multivariabile, nessuna metrica.
+
+**Dati.** De Cassai A et al., *PLoS ONE* 2019;14:e0212976 (Azienda Ospedaliera di Padova),
+file "S1 Database" (CC-BY 4.0). Studio prospettico osservazionale: 500 adulti per tiroidectomia;
+**esclusi i pazienti con intubazione difficile prevista** (protocollo v1.4, §4).
+
+**Esito.** Cormack 3–4 con lama curva convenzionale: colonna `CORMACK (<3=0)`, **48 eventi (9,6%)**.
+La colonna `CASE` (intubazione difficile composita: Cormack 3–4, ≥ 4 tentativi o > 5 minuti)
+coincide con essa in tutti i 500 pazienti.
+
+**Predittori del modello principale (7, gli item di El-Ganzouri presenti + BMI).**
+Mallampati ≥ III, apertura bocca < 4 cm, DTM (cm, continua), mobilità del collo ≤ 90°,
+prognatismo non possibile, storia di intubazione difficile, BMI. Età, sesso e variabili della
+tiroide (circonferenza del collo, gozzo mediastinico, deviazione tracheale, istologia) esclusi dal
+modello principale: non sono item delle vie aeree e non sono disponibili nell'app.
+Mallampati, collo e storia esistono solo come sì/no (il dataset non ha le classi).
+
+**Modelli** (stessa pipeline e stessi fold, come §10):
+- Nessun modello; **El-Ganzouri ≥ 4** (riferimento clinico M0: regola fissa, e M1: logistica sulla
+  regola); solo Mallampati ≥ III.
+- **Logistica penalizzata L2 sui 7 predittori: modello principale.**
+- Gradient boosting e rete neurale (MLP 8): confronto.
+
+**Validazione.** Come §10: CV stratificata 5 × 20, AUC dentro i fold, bootstrap di Harrell
+(500), soglia 0,15, calibrazione, decision curve, IC bootstrap degli odds ratio.
+
+**Analisi secondarie.** (a) Modello principale + circonferenza del collo (modello "tiroide").
+(b) Trasferibilità del modello VitalDB (ASA non presente: imputato con la mediana). (c) Riley.
+(d) PROBAST.
+
+**Uso nell'app.** Se il modello principale discrimina, diventa il modello attivo: le sue variabili
+si ricavano tutte dal form "Valuta" (Mallampati ≥ 3, apertura bocca < 4 cm, DTM, collo ≤ 90°,
+prognatismo, storia di intubazione difficile dubbia o certa, BMI).
+
+### 11.1 Risultati (02/11/2026) — `models/decassai-lr-v1/`, **modello attivo dell'app**
+
+| Modello | AUC (dentro i fold, 5 × 20) | Sensibilità @15% | Segnalati @15% |
+|---|---|---|---|
+| El-Ganzouri ≥ 4, regola fissa 1996 (M0) | 0,60 | 27% | 10% |
+| El-Ganzouri ≥ 4 ricalibrato (M1) | 0,60 | 27% | 10% |
+| Solo Mallampati ≥ III | 0,64 | 38% | 13% |
+| **Logistica penalizzata, 7 predittori (attivo)** | **0,74** (0,72–0,75) | 35% | 13% |
+| Gradient boosting | 0,68 | 39% | 19% |
+| Rete neurale MLP 8 | 0,69 | 41% | 17% |
+
+- **Il modello sugli item batte la regola El-Ganzouri ≥ 4** (0,74 contro 0,60) a parità di pazienti
+  segnalati. Bootstrap: AUC apparente 0,77 → corretta 0,745; pendenza di calibrazione corretta
+  1,19 (la penalizzazione è un po' prudente, nessun overfitting). Senza penalizzazione: pendenza
+  corretta 0,81.
+- Gradient boosting e rete neurale non aggiungono nulla, e il boosting è mal calibrato (pendenza 0,46).
+- Odds ratio per 1 DS: BMI 1,39 · Mallampati III–IV 1,34 · storia di intubazione difficile 1,26
+  (solo 6 pazienti, 4 con Cormack 3–4) · apertura bocca < 4 cm 1,20 · DTM 0,77 (più lunga = meno
+  rischio) · collo 1,05 · prognatismo non possibile 0,86. Quest'ultimo è rumore: nessuna associazione
+  nei dati (9,1% contro 9,6%, 3 eventi); gli IC bootstrap di un modello penalizzato non sono test.
+- + circonferenza del collo (solo tiroide): AUC 0,76, corretta 0,77: piccolo guadagno.
+- Modello VitalDB su questi pazienti: AUC 0,64 (IC 0,56–0,71), rischio medio previsto 2,3% contro
+  9,6% osservato → sottostima di ~4 volte.
+- Riley: per 7 predittori servono 861 pazienti (83 eventi); disponibili 500 (48).
+- PROBAST: rischio di bias **alto** (esclusi i pazienti con intubazione difficile prevista; 7 eventi
+  per predittore e item già dicotomizzati), applicabilità **preoccupazione alta** (solo tiroide).
+- Nell'app: paziente senza fattori di rischio 5%, paziente con molti fattori 87% (prova del 02/11/2026).
+  Fuori dalla chirurgia tiroidea il rischio assoluto può essere diverso: serve una validazione esterna.

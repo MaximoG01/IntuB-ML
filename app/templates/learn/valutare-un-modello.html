@@ -1,0 +1,79 @@
+{% extends "learn/_post.html" %}
+{% block post %}
+{% if model %}{% set td = model.training_data %}{% set prev = td.prevalence %}{% endif %}
+
+<h2>Perché non l'accuratezza</h2>
+<p>Se il 18% dei pazienti ha un Cormack 3–4, un "modello" che risponde sempre <em>facile</em> ha un'accuratezza
+  dell'82% e non serve a nulla. Con esiti poco frequenti l'accuratezza premia chi ignora i casi che ci interessano.
+  Al suo posto si guardano quattro cose.</p>
+
+<h2>1. Discriminazione: l'AUC</h2>
+<p>Prendi a caso un paziente con Cormack 3–4 e uno con Cormack 1–2: l'AUC è la probabilità che il modello dia
+  al primo un rischio più alto. 0,5 = moneta; 1 = perfetto. Nella pratica clinica 0,7 è modesto, 0,8 buono.
+  L'AUC <strong>non dice se i numeri sono giusti</strong>, solo se l'ordine è giusto.</p>
+
+<h2>2. Calibrazione: i numeri sono veri?</h2>
+<p>Se il modello dice 20% a cento pazienti, circa venti dovrebbero avere un Cormack 3–4. Si controlla con il grafico
+  previsto/osservato e con due numeri:</p>
+<ul>
+  <li><strong>calibrazione media</strong>: rischio medio previsto contro frequenza osservata;</li>
+  <li><strong>pendenza di calibrazione</strong>: 1 è ideale; sotto 1 le predizioni sono troppo estreme (tipico
+    dell'overfitting), sopra 1 troppo timide.</li>
+</ul>
+<p>Con una soglia di probabilità la calibrazione è decisiva: un modello che ordina bene ma sbaglia i numeri
+  manda sopra o sotto soglia le persone sbagliate.</p>
+
+<h2>3. La soglia del 15%</h2>
+<p>"Preparo il piano B se il rischio è almeno 15%" vuol dire accettare circa 6 preparazioni inutili per ogni
+  laringoscopia difficile trovata (0,85 / 0,15 ≈ 5,7). È una scelta clinica, non statistica: costa poco preparare
+  un videolaringoscopio, costa molto non averlo. Alla soglia si riportano sensibilità, specificità, valori predittivi
+  e quota di pazienti segnalati.</p>
+
+<h2>4. Decision curve: serve davvero?</h2>
+<p>Il <strong>beneficio netto</strong> a una soglia <em>p</em> conta i veri positivi e toglie i falsi positivi pesati
+  con il rapporto <em>p</em>/(1−<em>p</em>):</p>
+<p class="formula">beneficio netto = VP/<em>n</em> − FP/<em>n</em> × <em>p</em>/(1 − <em>p</em>)</p>
+<p>Un modello è utile solo se sta sopra le due strategie banali: <em>prepara sempre</em> e <em>non preparare mai</em>
+  (beneficio zero).</p>
+{% if model and model.validation.dca_reference %}
+  {% set ref = model.validation.dca_reference %}
+  {% set k = ref.thresholds.index(model.threshold) %}
+  {% set r = model.validation.results[model.primary or "Logistica penalizzata (L2)"] %}
+  <div class="card">
+    <p><strong>Con i dati del progetto</strong> ({{ td.source }}, frequenza {{ "%.0f"|format(prev * 100) }}%) alla soglia
+      del {{ "%.0f"|format(model.threshold * 100) }}%:</p>
+    <ul>
+      <li>prepara sempre: beneficio netto {{ "%.3f"|format(ref.treat_all[k]) }};</li>
+      <li>modello attivo: {{ "%.3f"|format(r.dca.net_benefit[k]) }};</li>
+      <li>mai: 0.</li>
+    </ul>
+    {% if prev >= model.threshold %}
+    <p>Quando la frequenza dell'esito è già sopra la soglia, "prepara sempre" è difficile da battere: un modello
+      serve solo se trova con sicurezza i pazienti a rischio <em>basso</em>.</p>
+    {% else %}
+    <p>Con la frequenza sotto la soglia, "prepara sempre" costa più di quanto rende: il modello è utile se trova i
+      pochi pazienti a rischio alto senza segnalarne troppi.</p>
+    {% endif %}
+  </div>
+{% endif %}
+
+<h2>Come si stimano onestamente</h2>
+<p>Le metriche calcolate sugli stessi pazienti usati per allenare il modello sono ottimiste. Due modi per correggerle:</p>
+<ul>
+  <li><strong>validazione incrociata</strong>: si allena su 4/5 dei pazienti e si valuta sul quinto rimasto fuori,
+    a turno, ripetendo più volte; ogni passo di pre-elaborazione (imputazione, standardizzazione) si adatta solo
+    sulla parte di allenamento;</li>
+  <li><strong>bootstrap con correzione dell'ottimismo</strong> (Harrell): si misura quanto un modello allenato su un
+    campione bootstrap sembra migliore su quel campione che sui dati originali, e lo si sottrae. Con pochi pazienti è
+    il metodo raccomandato.</li>
+</ul>
+<p>Con pochissimi eventi anche la validazione incrociata ha trappole: nel nostro studio il modello "nullo", che dà a
+  tutti lo stesso rischio, risultava con AUC 0,31 invece di 0,50, perché la frequenza nei fold di allenamento cambia
+  di poco da un fold all'altro. Per questo l'AUC si calcola dentro ogni fold.</p>
+{% endblock %}
+{% block references %}
+<li>Vickers AJ, Elkin EB. Decision curve analysis. Med Decis Making 2006;26:565-74.</li>
+<li>Van Calster B et al. Calibration: the Achilles heel of predictive analytics. BMC Med 2019;17:230.</li>
+<li>Steyerberg EW. Clinical Prediction Models. 2ª ed. Springer 2019.</li>
+<li>Collins GS et al. TRIPOD+AI statement. BMJ 2024;385:e078378.</li>
+{% endblock %}

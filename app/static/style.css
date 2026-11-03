@@ -67,6 +67,7 @@ a:hover {
   display: flex;
   gap: 0.6rem;
   align-items: center;
+  overflow-x: auto;  /* small screens: scroll the menu instead of wrapping words */
 }
 
 .nav-link {
@@ -74,6 +75,7 @@ a:hover {
   font-size: 0.9rem;
   padding: 0.25rem 0.7rem;
   border-radius: 999px;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -343,3 +345,26 @@ textarea {
 .table th, .table td { border-bottom: 1px solid #d9e2ec; padding: 6px 8px; text-align: left; }
 .row-active { background: #f3f7fd; font-weight: 600; }
 .site-footer { text-align: center; color: #52606d; font-size: 0.85rem; padding: 24px 12px; }
+
+/* ---- Impara ---- */
+.learn { max-width: 820px; margin: 0 auto; line-height: 1.65; }
+.learn h2 { margin-top: 2rem; }
+.blog-card-title { font-weight: 600; margin-bottom: 0.4rem; }
+.formula { font-family: Georgia, serif; font-size: 1.05rem; background: #f3f7fd; padding: 8px 12px; border-radius: 6px; display: inline-block; }
+.refs { border-top: 1px solid #d9e2ec; margin-top: 2.5rem; padding-top: 0.5rem; }
+.learn-nav { display: flex; justify-content: space-between; gap: 1rem; margin: 2rem 0 1rem; font-size: 0.95rem; }
+.small-multiples { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.chart-small { height: 260px; }
+.chart-title { font-size: 1rem; margin: 0 0 4px; }
+.nn-figure { margin: 1rem 0; }
+.nn-figure svg { width: 100%; max-width: 560px; height: auto; background: #fcfcfb; border-radius: 8px; }
+.gd-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gd-controls input[type=range] { flex: 1; min-width: 160px; }
+.gd-readout { font-variant-numeric: tabular-nums; margin: 6px 0; }
+.gd-wrap { position: relative; max-width: 640px; }
+.gd-wrap canvas { width: 100%; display: block; border-radius: 8px; }
+.viz-tip { position: absolute; pointer-events: none; background: #0b0b0b; color: #fcfcfb; font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; white-space: nowrap; }
+details { margin: 10px 0; }
+
+.inline-form { display: inline; margin-left: 6px; }
+.btn-small { padding: 2px 10px; font-size: 0.85rem; }

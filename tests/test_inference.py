@@ -22,6 +22,25 @@ def test_exported_model_matches_sklearn():
     assert {c["feature"] for c in contributions} == set(model["features"])
 
 
+def test_form_fields_map_to_padova_items():
+    r = SimpleNamespace(age=50, sex="F", weight=80.0, height=160.0, asa=None, emergency=None, mallampati=3,
+                        dii=3.5, dtm=6.0, neck_movement=0, can_prognath=False, history_difficult=1)
+    f = inference.record_features(r)
+    assert (f["mallampati_ge3"], f["mouth_lt4"], f["dtm"], f["neck_limited"]) == (1.0, 1.0, 6.0, 0.0)
+    assert (f["no_prognath"], f["history_difficult_any"]) == (1.0, 1.0)
+    empty = inference.record_features(SimpleNamespace(age=50, weight=80.0))
+    assert all(empty[k] is None for k in ("mallampati_ge3", "mouth_lt4", "dtm", "neck_limited", "no_prognath"))
+
+
+def test_fixed_features_override_input():
+    model = {"features": ["video_laryngoscope"], "impute": {"video_laryngoscope": 1.0},
+             "mean": {"video_laryngoscope": 0.5}, "scale": {"video_laryngoscope": 0.5},
+             "coef": {"video_laryngoscope": -1.0}, "intercept": 0.0, "fixed": {"video_laryngoscope": 0.0}}
+    proba, contributions = inference.predict_features({"video_laryngoscope": 1.0}, model)
+    assert abs(proba - 1 / (1 + np.exp(-1.0))) < 1e-9
+    assert contributions[0]["fixed"] is True and contributions[0]["value"] == 0.0
+
+
 def test_missing_values_use_training_median():
     model = {"features": ["bmi"], "impute": {"bmi": 23.0}, "mean": {"bmi": 23.0},
              "scale": {"bmi": 3.0}, "coef": {"bmi": 0.5}, "intercept": 0.0}

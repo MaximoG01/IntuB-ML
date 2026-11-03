@@ -12,14 +12,14 @@ Il progetto ha due obiettivi:
 2. **Modello che si aggiorna**: partire dall'indice di El-Ganzouri (pesi fissi, 1996) e arrivare a
    pesi stimati sui dati raccolti, confrontando modelli diversi in modo corretto.
 
-## Stato attuale (31/10/2026)
+## Stato attuale (02/11/2026)
 
 | Parte | Stato |
 |---|---|
-| App Flask (login, inserimento casi, predizione, analytics, blog) | funziona in locale |
-| Dati | **VitalDB** (aperto, 5.173 pazienti, 131 Cormack 3–4) per il modello attivo; casi raccolti dall'app. Dati sintetici abbandonati (circolari, [SPEC.md](SPEC.md) §3.1) |
-| Modello attivo | `vitaldb-demo-lr-v1`: logistica penalizzata su età, sesso, BMI, ASA, urgenza. **AUC ≈ 0,60**: senza esame delle vie aeree si prevede poco |
-| Confronto | logistica, gradient boosting e rete neurale sugli stessi fold: AUC 0,59–0,61, nessuna differenza reale |
+| App Flask (login, inserimento casi, predizione, pagina Modello, sezione Impara) | funziona in locale |
+| Dati | **Chirurgia tiroidea, Padova** (De Cassai et al., PLoS ONE 2019: 500 pazienti, 48 Cormack 3–4, item di El-Ganzouri) per il modello attivo ([SPEC.md](SPEC.md) §11). Studio sugli obesi (99 pazienti, §10) e VitalDB (solo dati demografici, §9) come confronto. Dati sintetici abbandonati (§3.1) |
+| Modello attivo | `decassai-lr-v1`: logistica penalizzata su 7 item (Mallampati, apertura bocca, DTM, collo, prognatismo, storia, BMI). **AUC ≈ 0,74** contro 0,60 della regola El-Ganzouri ≥ 4; rischio di bias alto (PROBAST), solo chirurgia tiroidea |
+| Confronto | stessi fold per tutti: El-Ganzouri 0,60, Mallampati 0,64, logistica 0,74, gradient boosting 0,68, rete neurale 0,69. Sugli obesi nessun modello supera 0,56 |
 | El-Ganzouri | calcolato dall'app dai 7 item, mostrato accanto al modello |
 | Deployment | Heroku dismesso; alternative in [ARCHITECTURE.md](ARCHITECTURE.md) |
 
@@ -47,12 +47,39 @@ flask run
 
 Apri http://127.0.0.1:5000.
 
+### Condividere sulla rete locale (colleghi sulla stessa Wi-Fi/LAN)
+
+```powershell
+pip install -r requirements.txt
+powershell -ExecutionPolicy Bypass -File .\avvia_rete_locale.ps1
+```
+
+La prima volta chiede un **codice invito** e crea `.env.lan` (segreti, ignorato da git). Poi mostra
+l'indirizzo da dare ai colleghi (es. `http://192.168.1.20:8000`): si registrano con il codice invito.
+Se Windows chiede l'accesso alla rete, consenti solo le reti **private**. Solo casi senza dati
+identificativi: per pazienti reali servono comitato etico e informativa privacy (SPEC §3.3).
+
+Per nominare l'amministratore (aggiunge variabili ed esporta i casi), dopo che si è registrato:
+
+```powershell
+$env:FLASK_APP = "wsgi.py"; flask make-admin nome@esempio.it
+```
+
+### Variabili aggiuntive
+
+L'amministratore apre **Variabili** nel menu e aggiunge una variabile (numero con unità e
+intervallo ammesso, oppure scelta da una lista): compare subito nel form **Valuta** per tutti.
+Non entra nel calcolo del rischio finché non si allena un modello che la usa; i valori si scaricano
+con **Scarica CSV** (colonne `x_<nome>`, cella vuota = mancante) per l'allenamento offline.
+
 ### Allenare e confrontare i modelli (offline)
 
 ```powershell
 pip install -r requirements-train.txt
-python -m training.run_vitaldb     # scarica VitalDB, confronta 4 modelli, esporta models/vitaldb-demo-lr-v1/
-python -m pytest                   # test
+python -m training.run_decassai      # studio tiroide Padova (SPEC §11): confronta i modelli, esporta models/decassai-lr-v1/ e lo rende attivo
+python -m training.run_laryngoscope  # studio sugli obesi (SPEC §10), esporta models/laryngoscope-lr-v1/
+python -m training.run_vitaldb       # (vecchio) modello solo demografico su VitalDB
+python -m pytest                     # test
 ```
 
 Il risultato va in `models/<nome>/model.json` (pesi + metriche + dati dei grafici) e
