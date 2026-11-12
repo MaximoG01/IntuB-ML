@@ -55,18 +55,25 @@
 <figure class="figure">
   <img src="{{ url_for('static', filename='learn/cross-validation.svg') }}"
        alt="Five rows, one per round; in each row four blue blocks marked learn and one orange block marked test, in a different position each time">
-  <figcaption>Each patient is hidden exactly once. In the end every patient has been predicted by a model that had
-    never seen them.</figcaption>
+  <figcaption>Each row is a <strong>different model, built from zero</strong>. A patient in the orange group is
+    scored by a model that has never seen them, even though the other four models do learn from that patient.</figcaption>
 </figure>
 <ol>
   <li>The 500 patients are split at random into <strong>5 groups of 100</strong>, each with about the same share of
     difficult cases.</li>
-  <li>The model learns from 4 groups (400 patients) and is scored on the 5th (100 patients it has never seen).</li>
-  <li>This is repeated 5 times, hiding a different group each time: <strong>5 scores</strong>.</li>
+  <li><strong>Round 1:</strong> a brand-new model learns from 4 groups (400 patients) and is scored on the 5th
+    (100 patients it has never seen).</li>
+  <li><strong>Rounds 2 to 5:</strong> the model is thrown away and a new one is built from zero, each time hiding a
+    different group. So the same patient <em>is</em> used again for learning in the other rounds, but always by a
+    different model, never by the one that scores them. Result: <strong>5 scores</strong>.</li>
   <li>The patients are then reshuffled into new groups and everything is done again, several times, so that the
     result does not depend on a lucky or unlucky split. The average of all the scores is the number we report.</li>
 </ol>
 <p>Experts call this <em>cross-validation</em> ("5-fold": 5 groups; "× 5" or "× 20": how many times it is reshuffled).</p>
+<p><strong>And the model in the app?</strong> After the check, one last model is built from <em>all</em> 500 patients:
+  that is the one used on the Assess page. Cross-validation does not test that exact model (it has seen everyone);
+  it tells us how well the <em>recipe</em> — these signs, this penalty, this way of fitting — works on new patients.
+  The final model, built from a little more data, is expected to do at least as well.</p>
 
 <p><strong>The score: AUC.</strong> Take one patient who turned out difficult and one who turned out easy. The AUC is
   how often the model gives the difficult one the higher risk. <strong>0.5</strong> = a coin toss,
