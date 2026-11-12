@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="intuB logo: laryngoscope"><title>intuB logo: laryngoscope</title>
+<rect width="64" height="64" rx="14" fill="#0f3c91"/>
+<path d="M41 9 H27 C14 9 6.5 17.5 3.5 31 L10.5 32.8 C12.8 22.5 18 17 27 17 H41 Z" fill="#fff"/>
+<circle cx="7.2" cy="33.6" r="3.6" fill="#ffd166"/>
+<rect x="38" y="7" width="20" height="12" rx="3" fill="#fff"/>
+<rect x="41" y="21" width="14" height="38" rx="4.5" fill="#fff"/>
+<path d="M44 28 H52 M44 33 H52 M44 38 H52 M44 43 H52 M44 48 H52 M44 53 H52" stroke="#0f3c91" stroke-width="1.6" opacity=".5"/></svg>

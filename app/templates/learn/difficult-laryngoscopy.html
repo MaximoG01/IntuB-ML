@@ -15,14 +15,45 @@
   </tbody>
 </table>
 </div>
+<figure class="figure">
+  <img src="{{ url_for('static', filename='learn/cormack-lehane.svg') }}"
+       alt="Four views through the laryngoscope: grade 1 whole glottis, grade 2 only the posterior glottis and arytenoids, grade 3 only the epiglottis, grade 4 no laryngeal structure">
+  <figcaption>The four Cormack-Lehane grades as seen through the laryngoscope (schematic). Top of each circle = anterior
+    (epiglottis); the white bands are the vocal cords, the two bumps below them the arytenoids.</figcaption>
+</figure>
 <p>The Cormack grade depends <strong>on the device</strong>: with a video laryngoscope the same person often has a better
   grade than with a Macintosh blade. This is why a Cormack grade must always be recorded together with the device, and
   two grades obtained with different devices are not the same outcome.</p>
+<div class="figure-pair">
+  <figure class="figure">
+    <img src="{{ url_for('static', filename='learn/macintosh-blades.jpg') }}" loading="lazy"
+         alt="A laryngoscope handle with Macintosh curved blades of decreasing size">
+    <figcaption><strong>Direct laryngoscopy</strong>: Macintosh curved blades. The operator must line up mouth, pharynx and
+      larynx to see the glottis directly. <span class="credit">Photo: Sasata,
+      <a href="https://commons.wikimedia.org/wiki/File:Macintosh_Blades.jpg">Wikimedia Commons</a>,
+      <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</span></figcaption>
+  </figure>
+  <figure class="figure">
+    <img src="{{ url_for('static', filename='learn/glidescope-02.jpg') }}" loading="lazy"
+         alt="An operator holding a video laryngoscope in a patient's mouth while passing a tracheal tube">
+    <figcaption><strong>Video laryngoscopy</strong>: a camera near the tip "looks around the corner", so the same patient
+      often gets a better grade. <span class="credit">Photo: DiverDave,
+      <a href="https://commons.wikimedia.org/wiki/File:Glidescope_02.JPG">Wikimedia Commons</a>,
+      <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</span></figcaption>
+  </figure>
+</div>
 
 <h2>Bedside signs</h2>
 <p>No single sign predicts difficult laryngoscopy well. The best known is the <strong>Mallampati</strong> class
-  (1–4: how much of the soft palate, uvula and pillars can be seen with the mouth open). Others: thyromental distance,
-  mouth opening, neck movement, ability to protrude the jaw, weight, history of difficult intubation.</p>
+  (I–IV: how much of the soft palate, uvula and pillars can be seen with the patient seated, mouth wide open and tongue
+  out, without phonation). Others: thyromental distance, mouth opening, neck movement, ability to protrude the jaw,
+  weight, history of difficult intubation.</p>
+<figure class="figure">
+  <img src="{{ url_for('static', filename='learn/mallampati.svg') }}"
+       alt="Four open mouths: class I palate, uvula and pillars visible; class II palate and uvula; class III palate and base of the uvula; class IV hard palate only">
+  <figcaption>Mallampati classes (schematic, as modified by Samsoon and Young). In our model the sign enters as
+    "class III–IV" yes/no.</figcaption>
+</figure>
 
 <h2>The El-Ganzouri index (1996)</h2>
 <p>El-Ganzouri and colleagues combined 7 of these signs into a score from 0 to 12, positive if ≥ 4. It was built on more

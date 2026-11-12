@@ -52,7 +52,34 @@ def neural_net_curves(X: np.ndarray, y: np.ndarray, inputs, seed=42, epochs=400)
             "n_params": int(X.shape[1] * 8 + 8 + 8 + 1)}
 
 
-def material(X: np.ndarray, y: np.ndarray, inputs, gd_column: int, gd_label: str, source: str) -> dict:
+def regularization_path(X: np.ndarray, y: np.ndarray, inputs, chosen_C: float | None = None,
+                        n_points=25, n_repeats=5, seed=42) -> dict:
+    """Penalized logistic over a grid of L2 strengths: coefficients, apparent vs cross-validated AUC,
+    spread of the predicted risks. Only aggregates leave this function (no patient rows)."""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import roc_auc_score
+    from sklearn.model_selection import RepeatedStratifiedKFold
+
+    def pipe(C):
+        return Pipeline([("impute", SimpleImputer(strategy="median")), ("scale", StandardScaler()),
+                         ("lr", LogisticRegression(C=C, max_iter=2000))])
+
+    folds = list(RepeatedStratifiedKFold(n_splits=5, n_repeats=n_repeats, random_state=seed).split(X, y))
+    steps = []
+    for C in np.logspace(-3, 2, n_points):
+        full = pipe(C).fit(X, y)
+        p = full.predict_proba(X)[:, 1]
+        cv = [roc_auc_score(y[te], pipe(C).fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]) for tr, te in folds]
+        steps.append({"C": float(C), "coef": full[-1].coef_[0].round(4).tolist(),
+                      "auc_train": round(float(roc_auc_score(y, p)), 4), "auc_cv": round(float(np.mean(cv)), 4),
+                      "p_min": round(float(p.min()), 4), "p_max": round(float(p.max()), 4)})
+    return {"inputs": list(inputs), "steps": steps, "chosen_C": chosen_C, "prevalence": float(y.mean()),
+            "n": int(len(y)), "events": int(y.sum()), "cv": f"5-fold x {n_repeats}"}
+
+
+def material(X: np.ndarray, y: np.ndarray, inputs, gd_column: int, gd_label: str, source: str,
+             chosen_C: float | None = None) -> dict:
     gd = gradient_descent(X[:, gd_column], y)
     gd["predictor"] = gd_label
-    return {"source": source, "gradient_descent": gd, "neural_net": neural_net_curves(X, y, inputs)}
+    return {"source": source, "gradient_descent": gd, "neural_net": neural_net_curves(X, y, inputs),
+            "regularization": regularization_path(X, y, inputs, chosen_C)}

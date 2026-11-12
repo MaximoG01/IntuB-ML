@@ -461,6 +461,8 @@ def export_csv():
 LEARN_POSTS = [
     {"slug": "difficult-laryngoscopy", "title": "Difficult laryngoscopy: Cormack, Mallampati, El-Ganzouri",
      "subtitle": "What we want to predict, with which bedside signs, and why the device changes the outcome."},
+    {"slug": "how-the-model-was-built", "title": "How our model was built (and train it yourself)",
+     "subtitle": "From 500 patients to the app in five steps; move the penalty and watch weights and AUC change."},
     {"slug": "evaluating-a-model", "title": "How to evaluate a risk model",
      "subtitle": "AUC, calibration, the 15% threshold and decision curves, with the numbers from our studies."},
     {"slug": "bias-probast", "title": "Risk of bias: PROBAST applied to our studies",

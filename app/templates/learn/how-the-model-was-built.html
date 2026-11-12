@@ -1,0 +1,149 @@
+{% extends "learn/_post.html" %}
+{% block post %}
+{% set reg = teaching.regularization if teaching and teaching.regularization else none %}
+
+<h2>From data to the app, in five steps</h2>
+<figure class="figure">
+  <img src="{{ url_for('static', filename='learn/pipeline.svg') }}"
+       alt="Five boxes: 500 patients, prepare, fit a logistic model with L2 penalty, validate, export to the app">
+</figure>
+<ol>
+  <li><strong>Data.</strong> 500 adults before thyroid surgery in Padova; 48 had Cormack 3–4 with a curved blade.
+    Every sign was recorded <em>before</em> laryngoscopy.</li>
+  <li><strong>Prepare.</strong> Missing values are filled with the median; each sign is rescaled to mean 0 and standard
+    deviation 1, so that the weights can be compared and penalized fairly.</li>
+  <li><strong>Fit.</strong> A logistic regression finds one weight per sign
+    (<a href="{{ url_for('main.blog_post', slug='gradient-descent') }}">how it learns</a>), with a penalty that keeps
+    the weights small. The strength of the penalty is chosen automatically (see below).</li>
+  <li><strong>Validate.</strong> The model is rebuilt 100 times, each time leaving out one fifth of the patients and
+    scoring it on them (5-fold cross-validation × 20). A bootstrap estimates how optimistic the results are.</li>
+  <li><strong>Export.</strong> The final weights go into a small text file (<code>model.json</code>); the
+    <a href="{{ url_for('main.predict') }}">Assess</a> page only multiplies and adds: the model is not retrained online.</li>
+</ol>
+
+<h2>What a logistic regression does</h2>
+<p>Each sign adds or subtracts a fixed amount to a <strong>score</strong>:</p>
+<p class="formula">score = intercept + w₁·Mallampati III–IV + w₂·mouth &lt; 4 cm + … + w₇·BMI</p>
+<p>The logistic curve then turns the score into a probability. A patient with every sign at the average value sits
+  near the prevalence (about 8–10%); each unfavourable sign pushes the point to the right along the curve. Above 15%
+  the app suggests preparing plan B.</p>
+<figure class="figure">
+  <img src="{{ url_for('static', filename='learn/logistic-curve.svg') }}"
+       alt="S-shaped curve from 0 to 100% predicted risk against the score; the 15% threshold is a dashed line">
+  <figcaption>The logistic curve. The steep middle part is where small changes in the signs change the decision.</figcaption>
+</figure>
+
+<h2>Why a penalty?</h2>
+<p>With only 48 events and 7 signs, an unpenalized logistic regression adapts to the noise of these particular
+  patients: the weights come out too large and the predictions too extreme
+  (<a href="{{ url_for('main.blog_post', slug='overfitting') }}">overfitting</a>). The <strong>L2 penalty</strong>
+  (ridge) changes what is minimized:</p>
+<p class="formula">prediction error + λ × (w₁² + w₂² + … + w₇²)</p>
+<p>Large weights now "cost" something, so the model keeps them only if the data really support them. In scikit-learn the
+  strength is written as <em>C</em> = 1/λ: small C = strong penalty. Ours was chosen by an inner cross-validation that
+  minimizes the <em>log-loss</em>, a score that punishes badly calibrated probabilities, not only bad ranking.</p>
+
+<h2>Try it yourself: move the penalty</h2>
+{% if reg %}
+<p class="muted">Each position of the slider is a model actually trained on the {{ reg.n }} Padova patients
+  ({{ reg.events }} events). "Unseen patients" = average AUC over {{ reg.cv }} cross-validation.</p>
+<div class="gd-controls">
+  <span class="small">weak penalty</span>
+  <input id="regSlider" type="range" min="0" max="{{ reg.steps|length - 1 }}" step="1" aria-label="penalty strength">
+  <span class="small">strong penalty</span>
+  {% if reg.chosen_C %}<button id="regChosen" class="btn btn-small" type="button">the model's choice</button>{% endif %}
+</div>
+<div class="reg-readout" aria-live="polite">
+  <div>Penalty λ = 1/C<strong id="rLambda"></strong></div>
+  <div>AUC, training patients<strong id="rTrain"></strong></div>
+  <div>AUC, unseen patients<strong id="rCv"></strong></div>
+  <div>Range of predicted risk<strong id="rRange"></strong></div>
+</div>
+<div class="small-multiples">
+  <div><p class="chart-title">Weights (odds ratio per standard deviation)</p>
+    <div class="chart chart-small"><canvas id="regCoef"></canvas></div></div>
+  <div><p class="chart-title">AUC as the penalty grows</p>
+    <div class="chart chart-small"><canvas id="regAuc"></canvas></div></div>
+</div>
+
+<h3>What to notice</h3>
+<ul>
+  <li><strong>The AUC barely moves.</strong> Shrinking all the weights together keeps the patients in almost the same
+    order, and the AUC only looks at the order.</li>
+  <li><strong>The probabilities change a lot.</strong> With a very strong penalty every patient gets roughly the same
+    risk, close to the prevalence: nobody crosses the 15% threshold, so a model with a "good" AUC becomes useless at the
+    bedside. This is why calibration is checked separately
+    (<a href="{{ url_for('main.blog_post', slug='evaluating-a-model') }}">how to evaluate a model</a>).</li>
+  <li><strong>Without a penalty</strong> the AUC on the training patients stays above the AUC on unseen patients: that
+    gap is the optimism that the validation removes.</li>
+</ul>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+(function () {
+  const REG = {{ reg | tojson }};
+  const steps = REG.steps.slice().reverse();            // slider: left = weak penalty (large C)
+  const or = c => Math.exp(c);
+  const allOr = steps.flatMap(s => s.coef.map(or));
+  const orMin = Math.min(0.5, ...allOr) * 0.95, orMax = Math.max(1.6, ...allOr) * 1.05;
+  const lam = s => 1 / s.C;
+  const fmtLam = v => v < 0.1 ? v.toFixed(3) : v < 10 ? v.toFixed(2) : v.toFixed(0);
+  const pct = p => (p * 100).toFixed(p < 0.1 ? 1 : 0) + "%";
+  let chosen = null;
+  if (REG.chosen_C) {
+    const d = steps.map(s => Math.abs(Math.log(s.C) - Math.log(REG.chosen_C)));
+    chosen = d.indexOf(Math.min(...d));
+  }
+  const slider = document.getElementById("regSlider");
+
+  const coefChart = new Chart(document.getElementById("regCoef"), {
+    type: "bar",
+    data: { labels: REG.inputs, datasets: [{ data: [], backgroundColor: [] }] },
+    options: { indexAxis: "y", maintainAspectRatio: false, animation: { duration: 150 },
+      plugins: { legend: { display: false } },
+      scales: { x: { type: "logarithmic", min: orMin, max: orMax, title: { display: true, text: "odds ratio (1 = no effect)" } } } }
+  });
+  // bars start at OR = 1: draw them as [1, OR] intervals
+  const aucChart = new Chart(document.getElementById("regAuc"), {
+    type: "line",
+    data: { labels: steps.map(s => fmtLam(lam(s))), datasets: [
+      { label: "training patients", data: steps.map(s => s.auc_train), borderColor: "#9aa5b1", pointRadius: 0, borderWidth: 2 },
+      { label: "unseen patients", data: steps.map(s => s.auc_cv), borderColor: "#2a78d6", pointRadius: 0, borderWidth: 3 },
+      { label: "current model", data: [], borderColor: "#c2410c", backgroundColor: "#c2410c", pointRadius: 6, showLine: false }
+    ]},
+    options: { maintainAspectRatio: false, animation: false,
+      scales: { x: { title: { display: true, text: "penalty λ (left weak → right strong)" }, ticks: { maxTicksLimit: 6 } },
+                y: { min: 0.65, max: 0.8, title: { display: true, text: "AUC" } } } }
+  });
+
+  function show(i) {
+    const s = steps[i];
+    document.getElementById("rLambda").textContent = fmtLam(lam(s)) + (i === chosen ? " ✓" : "");
+    document.getElementById("rTrain").textContent = s.auc_train.toFixed(3);
+    document.getElementById("rCv").textContent = s.auc_cv.toFixed(3);
+    document.getElementById("rRange").textContent = pct(s.p_min) + " – " + pct(s.p_max);
+    coefChart.data.datasets[0].data = s.coef.map(c => [1, or(c)]);
+    coefChart.data.datasets[0].backgroundColor = s.coef.map(c => c >= 0 ? "#c2410c" : "#2a78d6");
+    coefChart.update();
+    aucChart.data.datasets[2].data = steps.map((_, k) => k === i ? s.auc_cv : null);
+    aucChart.update();
+  }
+  slider.addEventListener("input", () => show(+slider.value));
+  const start = chosen !== null ? chosen : Math.floor(steps.length / 2);
+  slider.value = start; show(start);
+  const btn = document.getElementById("regChosen");
+  if (btn) btn.addEventListener("click", () => { slider.value = chosen; show(chosen); });
+})();
+</script>
+<p class="muted small">Orange bars: signs that raise the risk; blue bars: signs that lower it (e.g. a longer
+  thyromental distance). The tick ✓ marks the penalty the model actually uses.</p>
+{% else %}
+<p class="muted">Data not available: run <code>python -m training.run_thyroid --teaching-only</code>.</p>
+{% endif %}
+{% endblock %}
+{% block references %}
+<li>Hoerl AE, Kennard RW. Ridge regression: biased estimation for nonorthogonal problems. Technometrics 1970;12:55-67.</li>
+<li>Steyerberg EW. Clinical Prediction Models, 2nd ed. Springer 2019 (chapters 13–14, shrinkage and penalization).</li>
+<li>Riley RD et al. Calculating the sample size required for developing a clinical prediction model. BMJ 2020;368:m441.</li>
+<li>Data: De Cassai A et al. PLoS ONE 2019;14:e0212976 (CC-BY 4.0).</li>
+{% endblock %}

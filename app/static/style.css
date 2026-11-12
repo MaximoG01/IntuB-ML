@@ -368,3 +368,28 @@ details { margin: 10px 0; }
 
 .inline-form { display: inline; margin-left: 6px; }
 .btn-small { padding: 2px 10px; font-size: 0.85rem; }
+
+/* ---- brand, disclaimer, figures ---- */
+.brand-link { display: flex; align-items: center; gap: 0.5rem; color: #f9fafb; }
+.brand-link:hover { text-decoration: none; }
+.brand-logo { display: block; border-radius: 8px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.disclaimer-bar { background: #fff8eb; border-bottom: 1px solid #f3d9b1; color: #7c2d12; font-size: 0.85rem;
+  text-align: center; padding: 6px 16px; }
+.footer-heart { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 6px; }
+.landing { text-align: center; max-width: 620px; margin: 0 auto; padding: 1rem 0; }
+.landing-logos { display: flex; justify-content: center; align-items: center; gap: 14px; margin-bottom: 0.6rem; }
+.landing-logos img { border-radius: 20px; }
+.landing-heart { width: 56px; height: 56px; border-radius: 50% !important; object-fit: cover; }
+.landing .warn { text-align: left; margin: 1rem 0; }
+.landing .btn { margin: 4px; }
+.btn-ghost { background: #fff; color: #0f3c91; border: 1px solid #0f3c91; }
+.btn-ghost:hover { background: #f0f4ff; text-decoration: none; }
+.figure { margin: 1.2rem 0; }
+.figure img { display: block; width: 100%; height: auto; border-radius: 8px; }
+.figure-narrow img { max-width: 420px; margin: 0 auto; }
+.figure figcaption { font-size: 0.85rem; color: #52606d; margin-top: 6px; }
+.figure-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.credit { font-size: 0.78rem; color: #6b7280; }
+.reg-readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 10px 0; }
+.reg-readout div { background: #f3f7fd; border-radius: 8px; padding: 8px 12px; }
+.reg-readout strong { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; }

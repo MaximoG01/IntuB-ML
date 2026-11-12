@@ -8,6 +8,7 @@ Writes models/thyroid-lr-v1/ (model.json, model_card.md, teaching.json) and mode
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -133,6 +134,20 @@ def model_card(model: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def write_teaching(X, y, chosen_C):
+    """teaching.json for the Learn pages; also callable alone (python -m training.run_thyroid --teaching-only)."""
+    labels = [inference.FEATURE_LABELS[f] for f in thyroid.FEATURES]
+    material = teaching.material(X, y, labels, 0, "Mallampati ≥ III", thyroid.SOURCE, chosen_C=chosen_C)
+    (MODELS_DIR / MODEL_NAME / "teaching.json").write_text(json.dumps(material), encoding="utf-8")
+
+
+def teaching_only():
+    df = thyroid.load()
+    model = json.loads((MODELS_DIR / MODEL_NAME / "model.json").read_text(encoding="utf-8"))
+    write_teaching(df[thyroid.FEATURES].to_numpy(dtype=float), df["difficult"].to_numpy(dtype=int), model.get("C"))
+    print("Rewrote teaching.json")
+
+
 def main():
     df = thyroid.load()
     y = df["difficult"].to_numpy(dtype=int)
@@ -191,13 +206,11 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     (out / "model.json").write_text(json.dumps(model, indent=1), encoding="utf-8")
     (out / "model_card.md").write_text(model_card(model), encoding="utf-8")
-    labels = [inference.FEATURE_LABELS[f] for f in thyroid.FEATURES]
-    (out / "teaching.json").write_text(json.dumps(teaching.material(X, y, labels, 0, "Mallampati ≥ III", thyroid.SOURCE)),
-                                       encoding="utf-8")
+    write_teaching(X, y, model.get("C"))
     # SPEC §11: the primary model becomes the app model if it discriminates (it does: AUC ~0.74)
     (MODELS_DIR / "ACTIVE").write_text(MODEL_NAME + "\n", encoding="utf-8")
     print(f"Exported {out} and set it as the active model")
 
 
 if __name__ == "__main__":
-    main()
+    teaching_only() if "--teaching-only" in sys.argv else main()

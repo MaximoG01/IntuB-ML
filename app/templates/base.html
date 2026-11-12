@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}intuB{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
@@ -12,7 +13,10 @@
 <header class="site-header">
   <div class="navbar">
     <div class="brand">
-      <span class="brand-main"><a class="brand-link" href="{{ url_for('main.landing') }}">intuB</a></span>
+      <a class="brand-link" href="{{ url_for('main.landing') }}">
+        <img class="brand-logo" src="{{ url_for('static', filename='logo.svg') }}" alt="" width="34" height="34">
+        <span class="brand-main">intuB</span>
+      </a>
     </div>
 
     <div class="navbar-right">
@@ -35,6 +39,10 @@
     </div>
   </div>
 </header>
+<div class="disclaimer-bar" role="note">
+  <strong>Not a certified medical app.</strong> Research and teaching prototype without CE marking (EU MDR 2017/745):
+  do not use it to make clinical decisions.
+</div>
 
 <main class="container">
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -51,8 +59,9 @@
 </main>
 
 <footer class="site-footer">
-  intuB-ML · research and teaching prototype, <strong>not a medical device</strong> ·
-  <a href="https://github.com/MaximoG01/intuB-ML">source code</a>
+  <img class="footer-heart" src="{{ url_for('static', filename='anestesista.jpg') }}" alt="" width="28" height="28">
+  <div>intuB-ML · research and teaching prototype, <strong>not a certified medical device</strong> ·
+    <a href="https://github.com/MaximoG01/intuB-ML">source code</a></div>
 </footer>
 
 </body>

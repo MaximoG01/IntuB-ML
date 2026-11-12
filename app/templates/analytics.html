@@ -14,7 +14,10 @@
 {% set primary = model.primary or "Penalized logistic (L2)" %}
 {% set thr = (model.threshold * 100)|round|int %}
 <section class="card">
-  <p><strong>{{ model.name }}</strong> · created {{ model.created }} · penalized logistic regression</p>
+  <p><strong>Padova thyroid-surgery model</strong> <span class="muted small">({{ model.name }}, trained on {{ model.created }})</span></p>
+  <p>Type: <strong>logistic regression with an L2 penalty</strong>, i.e. a weighted sum of bedside signs turned into a
+    probability, with the weights deliberately shrunk so that the model does not learn 500 patients by heart.
+    <a href="{{ url_for('main.blog_post', slug='how-the-model-was-built') }}">How it was built, and try the penalty yourself →</a></p>
   <p>Data: {{ td.source }} — {{ td.n }} patients{% if td.population %} ({{ td.population }}){% endif %},
     {{ td.events }} with Cormack 3–4 ({{ (td.prevalence * 100)|round(1) }}%).
     Variables: {{ model.features|map("feature_label")|join(", ") }}.</p>
