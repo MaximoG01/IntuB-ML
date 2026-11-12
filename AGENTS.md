@@ -36,4 +36,5 @@ $env:FLASK_APP = "wsgi.py"; flask run          # app in locale
 flask db migrate -m "descrizione"; flask db upgrade   # migrazioni
 python -m pytest                                # test (tests/)
 python -m training.run_thyroid                 # studio tiroide (modello attivo): confronto + export in models/
+python -m training.run_local_cases              # casi del sito: validazione + ricalibrazione (--export), non cambia ACTIVE
 ```
