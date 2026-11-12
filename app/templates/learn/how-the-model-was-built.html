@@ -16,8 +16,8 @@
   <li><strong>Fit.</strong> A logistic regression finds one weight per sign
     (<a href="{{ url_for('main.blog_post', slug='gradient-descent') }}">how it learns</a>), with a penalty that keeps
     the weights small. The strength of the penalty is chosen automatically (see below).</li>
-  <li><strong>Validate.</strong> The model is rebuilt 100 times, each time leaving out one fifth of the patients and
-    scoring it on them (5-fold cross-validation × 20). A bootstrap estimates how optimistic the results are.</li>
+  <li><strong>Validate.</strong> Check how the model does on patients it has never seen
+    (<a href="#new-patients">explained below</a>).</li>
   <li><strong>Export.</strong> The final weights go into a small text file (<code>model.json</code>); the
     <a href="{{ url_for('main.predict') }}">Assess</a> page only multiplies and adds: the model is not retrained online.</li>
 </ol>
@@ -40,14 +40,44 @@
   (<a href="{{ url_for('main.blog_post', slug='overfitting') }}">overfitting</a>). The <strong>L2 penalty</strong>
   (ridge) changes what is minimized:</p>
 <p class="formula">prediction error + λ × (w₁² + w₂² + … + w₇²)</p>
-<p>Large weights now "cost" something, so the model keeps them only if the data really support them. In scikit-learn the
-  strength is written as <em>C</em> = 1/λ: small C = strong penalty. Ours was chosen by an inner cross-validation that
-  minimizes the <em>log-loss</em>, a score that punishes badly calibrated probabilities, not only bad ranking.</p>
+<p>In plain words: large weights now "cost" something, so the model keeps a sign important only if the data really
+  support it. It is like a cautious colleague who does not change their mind on the basis of a single case.</p>
+<p class="muted small">Technical note: in scikit-learn the strength is written as <em>C</em> = 1/λ (small C = strong
+  penalty). Ours was chosen by a cross-validation (see below) that minimizes the <em>log-loss</em>, a score that punishes
+  wrong probabilities, not only a wrong order of patients.</p>
+
+<h2 id="new-patients">How do we know it works on new patients?</h2>
+<p>Think of a student preparing for an exam. If the exam uses exactly the questions they practised at home, a high
+  mark proves little: they may simply remember the answers. To know whether they have really <em>understood</em>,
+  you ask questions they have never seen.</p>
+<p>A model is the same. Tested on the patients it learnt from, it always looks better than it is. So we hide some
+  patients, let the model learn from the others, and then check it on the hidden ones:</p>
+<figure class="figure">
+  <img src="{{ url_for('static', filename='learn/cross-validation.svg') }}"
+       alt="Five rows, one per round; in each row four blue blocks marked learn and one orange block marked test, in a different position each time">
+  <figcaption>Each patient is hidden exactly once. In the end every patient has been predicted by a model that had
+    never seen them.</figcaption>
+</figure>
+<ol>
+  <li>The 500 patients are split at random into <strong>5 groups of 100</strong>, each with about the same share of
+    difficult cases.</li>
+  <li>The model learns from 4 groups (400 patients) and is scored on the 5th (100 patients it has never seen).</li>
+  <li>This is repeated 5 times, hiding a different group each time: <strong>5 scores</strong>.</li>
+  <li>The patients are then reshuffled into new groups and everything is done again, several times, so that the
+    result does not depend on a lucky or unlucky split. The average of all the scores is the number we report.</li>
+</ol>
+<p>Experts call this <em>cross-validation</em> ("5-fold": 5 groups; "× 5" or "× 20": how many times it is reshuffled).</p>
+
+<p><strong>The score: AUC.</strong> Take one patient who turned out difficult and one who turned out easy. The AUC is
+  how often the model gives the difficult one the higher risk. <strong>0.5</strong> = a coin toss,
+  <strong>1</strong> = always right. Ours is about <strong>0.73</strong>: right about 3 times out of 4. Useful, but
+  far from perfect.</p>
 
 <h2>Try it yourself: move the penalty</h2>
 {% if reg %}
 <p class="muted">Each position of the slider is a model actually trained on the {{ reg.n }} Padova patients
-  ({{ reg.events }} events). "Unseen patients" = average AUC over {{ reg.cv }} cross-validation.</p>
+  ({{ reg.events }} with a difficult laryngoscopy). The boxes compare the AUC on the patients it learnt from with the
+  AUC on patients it had never seen, measured as above ({{ reg.cv|replace("5-fold x ", "5 groups, reshuffled ") }} times).</p>
 <div class="gd-controls">
   <span class="small">weak penalty</span>
   <input id="regSlider" type="range" min="0" max="{{ reg.steps|length - 1 }}" step="1" aria-label="penalty strength">
@@ -56,8 +86,8 @@
 </div>
 <div class="reg-readout" aria-live="polite">
   <div>Penalty λ = 1/C<strong id="rLambda"></strong></div>
-  <div>AUC, training patients<strong id="rTrain"></strong></div>
-  <div>AUC, unseen patients<strong id="rCv"></strong></div>
+  <div>AUC on the patients it learnt from<strong id="rTrain"></strong></div>
+  <div>AUC on patients never seen<strong id="rCv"></strong></div>
   <div>Range of predicted risk<strong id="rRange"></strong></div>
 </div>
 <div class="small-multiples">
@@ -108,8 +138,8 @@
   const aucChart = new Chart(document.getElementById("regAuc"), {
     type: "line",
     data: { labels: steps.map(s => fmtLam(lam(s))), datasets: [
-      { label: "training patients", data: steps.map(s => s.auc_train), borderColor: "#9aa5b1", pointRadius: 0, borderWidth: 2 },
-      { label: "unseen patients", data: steps.map(s => s.auc_cv), borderColor: "#2a78d6", pointRadius: 0, borderWidth: 3 },
+      { label: "patients it learnt from", data: steps.map(s => s.auc_train), borderColor: "#9aa5b1", pointRadius: 0, borderWidth: 2 },
+      { label: "patients never seen", data: steps.map(s => s.auc_cv), borderColor: "#2a78d6", pointRadius: 0, borderWidth: 3 },
       { label: "current model", data: [], borderColor: "#c2410c", backgroundColor: "#c2410c", pointRadius: 6, showLine: false }
     ]},
     options: { maintainAspectRatio: false, animation: false,
