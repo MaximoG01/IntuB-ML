@@ -47,3 +47,27 @@ def test_missing_values_use_training_median():
     r = SimpleNamespace(age=50, sex=None, weight=70.0, height=None, asa=None, emergency=None)
     proba, contributions = inference.predict(r, model)
     assert proba == 0.5 and contributions[0]["imputed"] is True
+
+
+def test_missing_sign_uses_submodel_not_median():
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import StandardScaler
+    from training import submodels
+
+    rng = np.random.default_rng(1)
+    X = np.column_stack([rng.integers(0, 2, 300), rng.normal(7.5, 2, 300)]).astype(float)
+    y = (rng.random(300) < 1 / (1 + np.exp(-(-2 + 1.2 * X[:, 0])))).astype(int)
+    feats = ["mallampati_ge3", "dtm"]
+    sc = StandardScaler().fit(X)
+    full = LogisticRegression(C=1.0).fit(sc.transform(X), y)
+    model = {"features": feats, "impute": {"mallampati_ge3": 0.0, "dtm": 7.5},
+             "mean": dict(zip(feats, sc.mean_)), "scale": dict(zip(feats, sc.scale_)),
+             "coef": dict(zip(feats, full.coef_[0])), "intercept": float(full.intercept_[0]),
+             "submodels": submodels.pattern_submodels(X, y, feats, 1.0)}
+    proba, contributions = inference.predict_features({"mallampati_ge3": None, "dtm": 6.0}, model)
+    only_dtm = LogisticRegression(C=1.0).fit(sc.transform(X)[:, [1]], y)
+    expected = only_dtm.predict_proba(np.array([[(6.0 - sc.mean_[1]) / sc.scale_[1]]]))[0, 1]
+    assert abs(proba - expected) < 1e-4
+    assert [c["feature"] for c in contributions if c["omitted"]] == ["mallampati_ge3"]
+    nothing, _ = inference.predict_features({}, model)
+    assert abs(nothing - y.mean()) < 1e-4            # nothing given: the prevalence

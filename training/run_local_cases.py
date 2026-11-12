@@ -103,6 +103,9 @@ def updated_model(model: dict, lp: np.ndarray, y: np.ndarray, source: str) -> tu
     # z' = a + b*z, with z = intercept + sum(coef * standardized value)
     new["intercept"] = a + b * model["intercept"]
     new["coef"] = {f: b * c for f, c in model["coef"].items()}
+    for sm in new.get("submodels", {}).values():
+        sm["intercept"] = a + b * sm["intercept"]
+        sm["coef"] = {f: b * c for f, c in sm["coef"].items()}
     new["name"] = f"{model['name']}-local-{date.today():%Y%m%d}"
     new["created"] = date.today().isoformat()
     new["updated_from"] = {"model": model["name"], "method": how, "a": a, "b": b,

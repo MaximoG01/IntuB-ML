@@ -2126,5 +2126,1082 @@
   "Thyroid surgery only, one centre; patients with an expected difficult intubation excluded.",
   "Mallampati, neck movement and history of difficult intubation available only as yes/no.",
   "Overall risk of bias high (PROBAST). Not externally validated. **Do not use for clinical decisions.**"
- ]
+ ],
+ "submodels": {
+  "": {
+   "intercept": -2.242481,
+   "coef": {}
+  },
+  "mallampati_ge3": {
+   "intercept": -2.329627,
+   "coef": {
+    "mallampati_ge3": 0.430705
+   }
+  },
+  "mouth_lt4": {
+   "intercept": -2.293534,
+   "coef": {
+    "mouth_lt4": 0.331373
+   }
+  },
+  "dtm": {
+   "intercept": -2.287108,
+   "coef": {
+    "dtm": -0.344821
+   }
+  },
+  "neck_limited": {
+   "intercept": -2.25428,
+   "coef": {
+    "neck_limited": 0.166931
+   }
+  },
+  "no_prognath": {
+   "intercept": -2.242503,
+   "coef": {
+    "no_prognath": -0.010491
+   }
+  },
+  "history_difficult_any": {
+   "intercept": -2.278415,
+   "coef": {
+    "history_difficult_any": 0.276951
+   }
+  },
+  "bmi": {
+   "intercept": -2.305827,
+   "coef": {
+    "bmi": 0.385
+   }
+  },
+  "mallampati_ge3|mouth_lt4": {
+   "intercept": -2.357257,
+   "coef": {
+    "mallampati_ge3": 0.370855,
+    "mouth_lt4": 0.237343
+   }
+  },
+  "mallampati_ge3|dtm": {
+   "intercept": -2.368151,
+   "coef": {
+    "mallampati_ge3": 0.412854,
+    "dtm": -0.311184
+   }
+  },
+  "mallampati_ge3|neck_limited": {
+   "intercept": -2.334915,
+   "coef": {
+    "mallampati_ge3": 0.417062,
+    "neck_limited": 0.09907
+   }
+  },
+  "mallampati_ge3|no_prognath": {
+   "intercept": -2.330041,
+   "coef": {
+    "mallampati_ge3": 0.439325,
+    "no_prognath": -0.070905
+   }
+  },
+  "mallampati_ge3|history_difficult_any": {
+   "intercept": -2.349446,
+   "coef": {
+    "mallampati_ge3": 0.392446,
+    "history_difficult_any": 0.226279
+   }
+  },
+  "mallampati_ge3|bmi": {
+   "intercept": -2.373725,
+   "coef": {
+    "mallampati_ge3": 0.383288,
+    "bmi": 0.31734
+   }
+  },
+  "mouth_lt4|dtm": {
+   "intercept": -2.330576,
+   "coef": {
+    "mouth_lt4": 0.29635,
+    "dtm": -0.300149
+   }
+  },
+  "mouth_lt4|neck_limited": {
+   "intercept": -2.301632,
+   "coef": {
+    "mouth_lt4": 0.317022,
+    "neck_limited": 0.12471
+   }
+  },
+  "mouth_lt4|no_prognath": {
+   "intercept": -2.293812,
+   "coef": {
+    "mouth_lt4": 0.333064,
+    "no_prognath": -0.031587
+   }
+  },
+  "mouth_lt4|history_difficult_any": {
+   "intercept": -2.318502,
+   "coef": {
+    "mouth_lt4": 0.296416,
+    "history_difficult_any": 0.245749
+   }
+  },
+  "mouth_lt4|bmi": {
+   "intercept": -2.350463,
+   "coef": {
+    "mouth_lt4": 0.314746,
+    "bmi": 0.366344
+   }
+  },
+  "dtm|neck_limited": {
+   "intercept": -2.295423,
+   "coef": {
+    "dtm": -0.325821,
+    "neck_limited": 0.129937
+   }
+  },
+  "dtm|no_prognath": {
+   "intercept": -2.287181,
+   "coef": {
+    "dtm": -0.34503,
+    "no_prognath": -0.014985
+   }
+  },
+  "dtm|history_difficult_any": {
+   "intercept": -2.318353,
+   "coef": {
+    "dtm": -0.327944,
+    "history_difficult_any": 0.274307
+   }
+  },
+  "dtm|bmi": {
+   "intercept": -2.349041,
+   "coef": {
+    "dtm": -0.332939,
+    "bmi": 0.381998
+   }
+  },
+  "neck_limited|no_prognath": {
+   "intercept": -2.254357,
+   "coef": {
+    "neck_limited": 0.167529,
+    "no_prognath": -0.016757
+   }
+  },
+  "neck_limited|history_difficult_any": {
+   "intercept": -2.291079,
+   "coef": {
+    "neck_limited": 0.173811,
+    "history_difficult_any": 0.279563
+   }
+  },
+  "neck_limited|bmi": {
+   "intercept": -2.315469,
+   "coef": {
+    "neck_limited": 0.143924,
+    "bmi": 0.378428
+   }
+  },
+  "no_prognath|history_difficult_any": {
+   "intercept": -2.279977,
+   "coef": {
+    "no_prognath": -0.059799,
+    "history_difficult_any": 0.283394
+   }
+  },
+  "no_prognath|bmi": {
+   "intercept": -2.305155,
+   "coef": {
+    "no_prognath": -0.044418,
+    "bmi": 0.389071
+   }
+  },
+  "history_difficult_any|bmi": {
+   "intercept": -2.340099,
+   "coef": {
+    "history_difficult_any": 0.273484,
+    "bmi": 0.382302
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm": {
+   "intercept": -2.388852,
+   "coef": {
+    "mallampati_ge3": 0.36045,
+    "mouth_lt4": 0.204319,
+    "dtm": -0.278588
+   }
+  },
+  "mallampati_ge3|mouth_lt4|neck_limited": {
+   "intercept": -2.361239,
+   "coef": {
+    "mallampati_ge3": 0.361637,
+    "mouth_lt4": 0.230385,
+    "neck_limited": 0.075245
+   }
+  },
+  "mallampati_ge3|mouth_lt4|no_prognath": {
+   "intercept": -2.358621,
+   "coef": {
+    "mallampati_ge3": 0.379544,
+    "mouth_lt4": 0.239735,
+    "no_prognath": -0.078146
+   }
+  },
+  "mallampati_ge3|mouth_lt4|history_difficult_any": {
+   "intercept": -2.371242,
+   "coef": {
+    "mallampati_ge3": 0.340598,
+    "mouth_lt4": 0.213734,
+    "history_difficult_any": 0.211672
+   }
+  },
+  "mallampati_ge3|mouth_lt4|bmi": {
+   "intercept": -2.401684,
+   "coef": {
+    "mallampati_ge3": 0.325464,
+    "mouth_lt4": 0.234848,
+    "bmi": 0.315481
+   }
+  },
+  "mallampati_ge3|dtm|neck_limited": {
+   "intercept": -2.370721,
+   "coef": {
+    "mallampati_ge3": 0.403997,
+    "dtm": -0.301504,
+    "neck_limited": 0.062354
+   }
+  },
+  "mallampati_ge3|dtm|no_prognath": {
+   "intercept": -2.369003,
+   "coef": {
+    "mallampati_ge3": 0.421775,
+    "dtm": -0.312383,
+    "no_prognath": -0.074368
+   }
+  },
+  "mallampati_ge3|dtm|history_difficult_any": {
+   "intercept": -2.381377,
+   "coef": {
+    "mallampati_ge3": 0.373348,
+    "dtm": -0.296389,
+    "history_difficult_any": 0.22566
+   }
+  },
+  "mallampati_ge3|dtm|bmi": {
+   "intercept": -2.414639,
+   "coef": {
+    "mallampati_ge3": 0.368115,
+    "dtm": -0.308863,
+    "bmi": 0.320144
+   }
+  },
+  "mallampati_ge3|neck_limited|no_prognath": {
+   "intercept": -2.335704,
+   "coef": {
+    "mallampati_ge3": 0.425218,
+    "neck_limited": 0.100766,
+    "no_prognath": -0.072376
+   }
+  },
+  "mallampati_ge3|neck_limited|history_difficult_any": {
+   "intercept": -2.356349,
+   "coef": {
+    "mallampati_ge3": 0.375901,
+    "neck_limited": 0.113473,
+    "history_difficult_any": 0.230333
+   }
+  },
+  "mallampati_ge3|neck_limited|bmi": {
+   "intercept": -2.379163,
+   "coef": {
+    "mallampati_ge3": 0.371277,
+    "neck_limited": 0.087868,
+    "bmi": 0.315145
+   }
+  },
+  "mallampati_ge3|no_prognath|history_difficult_any": {
+   "intercept": -2.352903,
+   "coef": {
+    "mallampati_ge3": 0.405161,
+    "no_prognath": -0.113389,
+    "history_difficult_any": 0.236215
+   }
+  },
+  "mallampati_ge3|no_prognath|bmi": {
+   "intercept": -2.376046,
+   "coef": {
+    "mallampati_ge3": 0.394274,
+    "no_prognath": -0.097051,
+    "bmi": 0.325745
+   }
+  },
+  "mallampati_ge3|history_difficult_any|bmi": {
+   "intercept": -2.393335,
+   "coef": {
+    "mallampati_ge3": 0.342324,
+    "history_difficult_any": 0.230479,
+    "bmi": 0.319941
+   }
+  },
+  "mouth_lt4|dtm|neck_limited": {
+   "intercept": -2.335494,
+   "coef": {
+    "mouth_lt4": 0.286641,
+    "dtm": -0.28679,
+    "neck_limited": 0.094942
+   }
+  },
+  "mouth_lt4|dtm|no_prognath": {
+   "intercept": -2.331124,
+   "coef": {
+    "mouth_lt4": 0.298685,
+    "dtm": -0.301317,
+    "no_prognath": -0.038235
+   }
+  },
+  "mouth_lt4|dtm|history_difficult_any": {
+   "intercept": -2.349999,
+   "coef": {
+    "mouth_lt4": 0.260971,
+    "dtm": -0.288774,
+    "history_difficult_any": 0.248257
+   }
+  },
+  "mouth_lt4|dtm|bmi": {
+   "intercept": -2.387801,
+   "coef": {
+    "mouth_lt4": 0.28183,
+    "dtm": -0.292678,
+    "bmi": 0.366732
+   }
+  },
+  "mouth_lt4|neck_limited|no_prognath": {
+   "intercept": -2.301908,
+   "coef": {
+    "mouth_lt4": 0.318952,
+    "neck_limited": 0.126037,
+    "no_prognath": -0.036581
+   }
+  },
+  "mouth_lt4|neck_limited|history_difficult_any": {
+   "intercept": -2.327141,
+   "coef": {
+    "mouth_lt4": 0.280125,
+    "neck_limited": 0.136408,
+    "history_difficult_any": 0.249915
+   }
+  },
+  "mouth_lt4|neck_limited|bmi": {
+   "intercept": -2.357516,
+   "coef": {
+    "mouth_lt4": 0.302861,
+    "neck_limited": 0.106258,
+    "bmi": 0.362419
+   }
+  },
+  "mouth_lt4|no_prognath|history_difficult_any": {
+   "intercept": -2.321617,
+   "coef": {
+    "mouth_lt4": 0.301257,
+    "no_prognath": -0.083724,
+    "history_difficult_any": 0.253423
+   }
+  },
+  "mouth_lt4|no_prognath|bmi": {
+   "intercept": -2.350585,
+   "coef": {
+    "mouth_lt4": 0.318195,
+    "no_prognath": -0.064075,
+    "bmi": 0.372259
+   }
+  },
+  "mouth_lt4|history_difficult_any|bmi": {
+   "intercept": -2.373129,
+   "coef": {
+    "mouth_lt4": 0.278184,
+    "history_difficult_any": 0.245233,
+    "bmi": 0.364101
+   }
+  },
+  "dtm|neck_limited|no_prognath": {
+   "intercept": -2.29547,
+   "coef": {
+    "dtm": -0.325968,
+    "neck_limited": 0.130577,
+    "no_prognath": -0.019287
+   }
+  },
+  "dtm|neck_limited|history_difficult_any": {
+   "intercept": -2.327682,
+   "coef": {
+    "dtm": -0.308835,
+    "neck_limited": 0.137994,
+    "history_difficult_any": 0.276589
+   }
+  },
+  "dtm|neck_limited|bmi": {
+   "intercept": -2.355783,
+   "coef": {
+    "dtm": -0.316767,
+    "neck_limited": 0.106192,
+    "bmi": 0.376534
+   }
+  },
+  "dtm|no_prognath|history_difficult_any": {
+   "intercept": -2.320703,
+   "coef": {
+    "dtm": -0.330418,
+    "no_prognath": -0.072726,
+    "history_difficult_any": 0.281682
+   }
+  },
+  "dtm|no_prognath|bmi": {
+   "intercept": -2.348797,
+   "coef": {
+    "dtm": -0.333166,
+    "no_prognath": -0.047533,
+    "bmi": 0.386105
+   }
+  },
+  "dtm|history_difficult_any|bmi": {
+   "intercept": -2.376772,
+   "coef": {
+    "dtm": -0.312359,
+    "history_difficult_any": 0.269564,
+    "bmi": 0.375587
+   }
+  },
+  "neck_limited|no_prognath|history_difficult_any": {
+   "intercept": -2.292029,
+   "coef": {
+    "neck_limited": 0.174888,
+    "no_prognath": -0.063778,
+    "history_difficult_any": 0.286263
+   }
+  },
+  "neck_limited|no_prognath|bmi": {
+   "intercept": -2.315762,
+   "coef": {
+    "neck_limited": 0.145262,
+    "no_prognath": -0.04879,
+    "bmi": 0.38251
+   }
+  },
+  "neck_limited|history_difficult_any|bmi": {
+   "intercept": -2.350913,
+   "coef": {
+    "neck_limited": 0.149146,
+    "history_difficult_any": 0.276713,
+    "bmi": 0.374662
+   }
+  },
+  "no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.341331,
+   "coef": {
+    "no_prognath": -0.089754,
+    "history_difficult_any": 0.282987,
+    "bmi": 0.389584
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|neck_limited": {
+   "intercept": -2.390526,
+   "coef": {
+    "mallampati_ge3": 0.354631,
+    "mouth_lt4": 0.200713,
+    "dtm": -0.272932,
+    "neck_limited": 0.045074
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|no_prognath": {
+   "intercept": -2.39025,
+   "coef": {
+    "mallampati_ge3": 0.369608,
+    "mouth_lt4": 0.206901,
+    "dtm": -0.280738,
+    "no_prognath": -0.083841
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|history_difficult_any": {
+   "intercept": -2.397043,
+   "coef": {
+    "mallampati_ge3": 0.329383,
+    "mouth_lt4": 0.181936,
+    "dtm": -0.26952,
+    "history_difficult_any": 0.214276
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|bmi": {
+   "intercept": -2.435704,
+   "coef": {
+    "mallampati_ge3": 0.316871,
+    "mouth_lt4": 0.202399,
+    "dtm": -0.278332,
+    "bmi": 0.319644
+   }
+  },
+  "mallampati_ge3|mouth_lt4|neck_limited|no_prognath": {
+   "intercept": -2.362446,
+   "coef": {
+    "mallampati_ge3": 0.370288,
+    "mouth_lt4": 0.232646,
+    "neck_limited": 0.076508,
+    "no_prognath": -0.079537
+   }
+  },
+  "mallampati_ge3|mouth_lt4|neck_limited|history_difficult_any": {
+   "intercept": -2.375689,
+   "coef": {
+    "mallampati_ge3": 0.328992,
+    "mouth_lt4": 0.205014,
+    "neck_limited": 0.091164,
+    "history_difficult_any": 0.21567
+   }
+  },
+  "mallampati_ge3|mouth_lt4|neck_limited|bmi": {
+   "intercept": -2.405541,
+   "coef": {
+    "mallampati_ge3": 0.317808,
+    "mouth_lt4": 0.228877,
+    "neck_limited": 0.065344,
+    "bmi": 0.314125
+   }
+  },
+  "mallampati_ge3|mouth_lt4|no_prognath|history_difficult_any": {
+   "intercept": -2.375892,
+   "coef": {
+    "mallampati_ge3": 0.352292,
+    "mouth_lt4": 0.217059,
+    "no_prognath": -0.122424,
+    "history_difficult_any": 0.221514
+   }
+  },
+  "mallampati_ge3|mouth_lt4|no_prognath|bmi": {
+   "intercept": -2.404278,
+   "coef": {
+    "mallampati_ge3": 0.336811,
+    "mouth_lt4": 0.237972,
+    "no_prognath": -0.104679,
+    "bmi": 0.324738
+   }
+  },
+  "mallampati_ge3|mouth_lt4|history_difficult_any|bmi": {
+   "intercept": -2.413414,
+   "coef": {
+    "mallampati_ge3": 0.293455,
+    "mouth_lt4": 0.210438,
+    "history_difficult_any": 0.2157,
+    "bmi": 0.316883
+   }
+  },
+  "mallampati_ge3|dtm|neck_limited|no_prognath": {
+   "intercept": -2.371541,
+   "coef": {
+    "mallampati_ge3": 0.412884,
+    "dtm": -0.302155,
+    "neck_limited": 0.062996,
+    "no_prognath": -0.074985
+   }
+  },
+  "mallampati_ge3|dtm|neck_limited|history_difficult_any": {
+   "intercept": -2.385319,
+   "coef": {
+    "mallampati_ge3": 0.361679,
+    "dtm": -0.284409,
+    "neck_limited": 0.078317,
+    "history_difficult_any": 0.228619
+   }
+  },
+  "mallampati_ge3|dtm|neck_limited|bmi": {
+   "intercept": -2.417542,
+   "coef": {
+    "mallampati_ge3": 0.361153,
+    "dtm": -0.300896,
+    "neck_limited": 0.049581,
+    "bmi": 0.319012
+   }
+  },
+  "mallampati_ge3|dtm|no_prognath|history_difficult_any": {
+   "intercept": -2.385967,
+   "coef": {
+    "mallampati_ge3": 0.385959,
+    "dtm": -0.298064,
+    "no_prognath": -0.120783,
+    "history_difficult_any": 0.235959
+   }
+  },
+  "mallampati_ge3|dtm|no_prognath|bmi": {
+   "intercept": -2.416865,
+   "coef": {
+    "mallampati_ge3": 0.380062,
+    "dtm": -0.310174,
+    "no_prognath": -0.101439,
+    "bmi": 0.328595
+   }
+  },
+  "mallampati_ge3|dtm|history_difficult_any|bmi": {
+   "intercept": -2.426326,
+   "coef": {
+    "mallampati_ge3": 0.327155,
+    "dtm": -0.29131,
+    "history_difficult_any": 0.227689,
+    "bmi": 0.320098
+   }
+  },
+  "mallampati_ge3|neck_limited|no_prognath|history_difficult_any": {
+   "intercept": -2.359844,
+   "coef": {
+    "mallampati_ge3": 0.388582,
+    "neck_limited": 0.115136,
+    "no_prognath": -0.114331,
+    "history_difficult_any": 0.240739
+   }
+  },
+  "mallampati_ge3|neck_limited|no_prognath|bmi": {
+   "intercept": -2.381349,
+   "coef": {
+    "mallampati_ge3": 0.382148,
+    "neck_limited": 0.089327,
+    "no_prognath": -0.097886,
+    "bmi": 0.323278
+   }
+  },
+  "mallampati_ge3|neck_limited|history_difficult_any|bmi": {
+   "intercept": -2.399919,
+   "coef": {
+    "mallampati_ge3": 0.328641,
+    "neck_limited": 0.101442,
+    "history_difficult_any": 0.234558,
+    "bmi": 0.317122
+   }
+  },
+  "mallampati_ge3|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.398162,
+   "coef": {
+    "mallampati_ge3": 0.357962,
+    "no_prognath": -0.138407,
+    "history_difficult_any": 0.243825,
+    "bmi": 0.330923
+   }
+  },
+  "mouth_lt4|dtm|neck_limited|no_prognath": {
+   "intercept": -2.336094,
+   "coef": {
+    "mouth_lt4": 0.289092,
+    "dtm": -0.287563,
+    "neck_limited": 0.09614,
+    "no_prognath": -0.04119
+   }
+  },
+  "mouth_lt4|dtm|neck_limited|history_difficult_any": {
+   "intercept": -2.356027,
+   "coef": {
+    "mouth_lt4": 0.249237,
+    "dtm": -0.274241,
+    "neck_limited": 0.107314,
+    "history_difficult_any": 0.25141
+   }
+  },
+  "mouth_lt4|dtm|neck_limited|bmi": {
+   "intercept": -2.391294,
+   "coef": {
+    "mouth_lt4": 0.274795,
+    "dtm": -0.281273,
+    "neck_limited": 0.074327,
+    "bmi": 0.362988
+   }
+  },
+  "mouth_lt4|dtm|no_prognath|history_difficult_any": {
+   "intercept": -2.354484,
+   "coef": {
+    "mouth_lt4": 0.266102,
+    "dtm": -0.291489,
+    "no_prognath": -0.093716,
+    "history_difficult_any": 0.256433
+   }
+  },
+  "mouth_lt4|dtm|no_prognath|bmi": {
+   "intercept": -2.388834,
+   "coef": {
+    "mouth_lt4": 0.286273,
+    "dtm": -0.294164,
+    "no_prognath": -0.069949,
+    "bmi": 0.372679
+   }
+  },
+  "mouth_lt4|dtm|history_difficult_any|bmi": {
+   "intercept": -2.403733,
+   "coef": {
+    "mouth_lt4": 0.245889,
+    "dtm": -0.27815,
+    "history_difficult_any": 0.245754,
+    "bmi": 0.361605
+   }
+  },
+  "mouth_lt4|neck_limited|no_prognath|history_difficult_any": {
+   "intercept": -2.330297,
+   "coef": {
+    "mouth_lt4": 0.285368,
+    "neck_limited": 0.1392,
+    "no_prognath": -0.087797,
+    "history_difficult_any": 0.258343
+   }
+  },
+  "mouth_lt4|neck_limited|no_prognath|bmi": {
+   "intercept": -2.35818,
+   "coef": {
+    "mouth_lt4": 0.306421,
+    "neck_limited": 0.108197,
+    "no_prognath": -0.067271,
+    "bmi": 0.368091
+   }
+  },
+  "mouth_lt4|neck_limited|history_difficult_any|bmi": {
+   "intercept": -2.381237,
+   "coef": {
+    "mouth_lt4": 0.265254,
+    "neck_limited": 0.117561,
+    "history_difficult_any": 0.249608,
+    "bmi": 0.359599
+   }
+  },
+  "mouth_lt4|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.37694,
+   "coef": {
+    "mouth_lt4": 0.285229,
+    "no_prognath": -0.113821,
+    "history_difficult_any": 0.25636,
+    "bmi": 0.373451
+   }
+  },
+  "dtm|neck_limited|no_prognath|history_difficult_any": {
+   "intercept": -2.329807,
+   "coef": {
+    "dtm": -0.311266,
+    "neck_limited": 0.13972,
+    "no_prognath": -0.075239,
+    "history_difficult_any": 0.284456
+   }
+  },
+  "dtm|neck_limited|no_prognath|bmi": {
+   "intercept": -2.355998,
+   "coef": {
+    "dtm": -0.316994,
+    "neck_limited": 0.107492,
+    "no_prognath": -0.05083,
+    "bmi": 0.380824
+   }
+  },
+  "dtm|neck_limited|history_difficult_any|bmi": {
+   "intercept": -2.384113,
+   "coef": {
+    "dtm": -0.295864,
+    "neck_limited": 0.113774,
+    "history_difficult_any": 0.272411,
+    "bmi": 0.369637
+   }
+  },
+  "dtm|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.379334,
+   "coef": {
+    "dtm": -0.315302,
+    "no_prognath": -0.101298,
+    "history_difficult_any": 0.280525,
+    "bmi": 0.383517
+   }
+  },
+  "neck_limited|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.351988,
+   "coef": {
+    "neck_limited": 0.151245,
+    "no_prognath": -0.092656,
+    "history_difficult_any": 0.286795,
+    "bmi": 0.382174
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|neck_limited|no_prognath": {
+   "intercept": -2.392077,
+   "coef": {
+    "mallampati_ge3": 0.363773,
+    "mouth_lt4": 0.203587,
+    "dtm": -0.274108,
+    "neck_limited": 0.045573,
+    "no_prognath": -0.083551
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|neck_limited|history_difficult_any": {
+   "intercept": -2.399604,
+   "coef": {
+    "mallampati_ge3": 0.321369,
+    "mouth_lt4": 0.176924,
+    "dtm": -0.260711,
+    "neck_limited": 0.061637,
+    "history_difficult_any": 0.216952
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|neck_limited|bmi": {
+   "intercept": -2.437075,
+   "coef": {
+    "mallampati_ge3": 0.312859,
+    "mouth_lt4": 0.19983,
+    "dtm": -0.273672,
+    "neck_limited": 0.033337,
+    "bmi": 0.318436
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|no_prognath|history_difficult_any": {
+   "intercept": -2.402857,
+   "coef": {
+    "mallampati_ge3": 0.340998,
+    "mouth_lt4": 0.185405,
+    "dtm": -0.271061,
+    "no_prognath": -0.128539,
+    "history_difficult_any": 0.224213
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|no_prognath|bmi": {
+   "intercept": -2.43918,
+   "coef": {
+    "mallampati_ge3": 0.328758,
+    "mouth_lt4": 0.206208,
+    "dtm": -0.280318,
+    "no_prognath": -0.109677,
+    "bmi": 0.329073
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|history_difficult_any|bmi": {
+   "intercept": -2.441099,
+   "coef": {
+    "mallampati_ge3": 0.28502,
+    "mouth_lt4": 0.179794,
+    "dtm": -0.266159,
+    "history_difficult_any": 0.21625,
+    "bmi": 0.318477
+   }
+  },
+  "mallampati_ge3|mouth_lt4|neck_limited|no_prognath|history_difficult_any": {
+   "intercept": -2.380491,
+   "coef": {
+    "mallampati_ge3": 0.340631,
+    "mouth_lt4": 0.208556,
+    "neck_limited": 0.093545,
+    "no_prognath": -0.123729,
+    "history_difficult_any": 0.226138
+   }
+  },
+  "mallampati_ge3|mouth_lt4|neck_limited|no_prognath|bmi": {
+   "intercept": -2.408017,
+   "coef": {
+    "mallampati_ge3": 0.329015,
+    "mouth_lt4": 0.231941,
+    "neck_limited": 0.066128,
+    "no_prognath": -0.105166,
+    "bmi": 0.32313
+   }
+  },
+  "mallampati_ge3|mouth_lt4|neck_limited|history_difficult_any|bmi": {
+   "intercept": -2.418268,
+   "coef": {
+    "mallampati_ge3": 0.283594,
+    "mouth_lt4": 0.203007,
+    "neck_limited": 0.081294,
+    "history_difficult_any": 0.219597,
+    "bmi": 0.315125
+   }
+  },
+  "mallampati_ge3|mouth_lt4|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.419907,
+   "coef": {
+    "mallampati_ge3": 0.307825,
+    "mouth_lt4": 0.215031,
+    "no_prognath": -0.14844,
+    "history_difficult_any": 0.22906,
+    "bmi": 0.32933
+   }
+  },
+  "mallampati_ge3|dtm|neck_limited|no_prognath|history_difficult_any": {
+   "intercept": -2.38987,
+   "coef": {
+    "mallampati_ge3": 0.37425,
+    "dtm": -0.28597,
+    "neck_limited": 0.079731,
+    "no_prognath": -0.12116,
+    "history_difficult_any": 0.239333
+   }
+  },
+  "mallampati_ge3|dtm|neck_limited|no_prognath|bmi": {
+   "intercept": -2.419965,
+   "coef": {
+    "mallampati_ge3": 0.372773,
+    "dtm": -0.302284,
+    "neck_limited": 0.050192,
+    "no_prognath": -0.100909,
+    "bmi": 0.32729
+   }
+  },
+  "mallampati_ge3|dtm|neck_limited|history_difficult_any|bmi": {
+   "intercept": -2.42996,
+   "coef": {
+    "mallampati_ge3": 0.318004,
+    "dtm": -0.281201,
+    "neck_limited": 0.065773,
+    "history_difficult_any": 0.230611,
+    "bmi": 0.318178
+   }
+  },
+  "mallampati_ge3|dtm|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.432658,
+   "coef": {
+    "mallampati_ge3": 0.342806,
+    "dtm": -0.293495,
+    "no_prognath": -0.146491,
+    "history_difficult_any": 0.241785,
+    "bmi": 0.331843
+   }
+  },
+  "mallampati_ge3|neck_limited|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.40478,
+   "coef": {
+    "mallampati_ge3": 0.34434,
+    "neck_limited": 0.103112,
+    "no_prognath": -0.139442,
+    "history_difficult_any": 0.248437,
+    "bmi": 0.328198
+   }
+  },
+  "mouth_lt4|dtm|neck_limited|no_prognath|history_difficult_any": {
+   "intercept": -2.360517,
+   "coef": {
+    "mouth_lt4": 0.2547,
+    "dtm": -0.276672,
+    "neck_limited": 0.110072,
+    "no_prognath": -0.096453,
+    "history_difficult_any": 0.260277
+   }
+  },
+  "mouth_lt4|dtm|neck_limited|no_prognath|bmi": {
+   "intercept": -2.392467,
+   "coef": {
+    "mouth_lt4": 0.279143,
+    "dtm": -0.282488,
+    "neck_limited": 0.07601,
+    "no_prognath": -0.071831,
+    "bmi": 0.368872
+   }
+  },
+  "mouth_lt4|dtm|neck_limited|history_difficult_any|bmi": {
+   "intercept": -2.409132,
+   "coef": {
+    "mouth_lt4": 0.237162,
+    "dtm": -0.265885,
+    "neck_limited": 0.087973,
+    "history_difficult_any": 0.249066,
+    "bmi": 0.357968
+   }
+  },
+  "mouth_lt4|dtm|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.409089,
+   "coef": {
+    "mouth_lt4": 0.253322,
+    "dtm": -0.281247,
+    "no_prognath": -0.123015,
+    "history_difficult_any": 0.257554,
+    "bmi": 0.371417
+   }
+  },
+  "mouth_lt4|neck_limited|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.385249,
+   "coef": {
+    "mouth_lt4": 0.272678,
+    "neck_limited": 0.120906,
+    "no_prognath": -0.116816,
+    "history_difficult_any": 0.261539,
+    "bmi": 0.369059
+   }
+  },
+  "dtm|neck_limited|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.386216,
+   "coef": {
+    "dtm": -0.298656,
+    "neck_limited": 0.115704,
+    "no_prognath": -0.103766,
+    "history_difficult_any": 0.283907,
+    "bmi": 0.377485
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|neck_limited|no_prognath|history_difficult_any": {
+   "intercept": -2.405358,
+   "coef": {
+    "mallampati_ge3": 0.33279,
+    "mouth_lt4": 0.180604,
+    "dtm": -0.26201,
+    "neck_limited": 0.063838,
+    "no_prognath": -0.129284,
+    "history_difficult_any": 0.227383
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|neck_limited|no_prognath|bmi": {
+   "intercept": -2.440293,
+   "coef": {
+    "mallampati_ge3": 0.324712,
+    "mouth_lt4": 0.203745,
+    "dtm": -0.275415,
+    "neck_limited": 0.033342,
+    "no_prognath": -0.109733,
+    "bmi": 0.327904
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|neck_limited|history_difficult_any|bmi": {
+   "intercept": -2.443536,
+   "coef": {
+    "mallampati_ge3": 0.278574,
+    "mouth_lt4": 0.175838,
+    "dtm": -0.258719,
+    "neck_limited": 0.050766,
+    "history_difficult_any": 0.218671,
+    "bmi": 0.317205
+   }
+  },
+  "mallampati_ge3|mouth_lt4|dtm|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.448999,
+   "coef": {
+    "mallampati_ge3": 0.299301,
+    "mouth_lt4": 0.184668,
+    "dtm": -0.268253,
+    "no_prognath": -0.155235,
+    "history_difficult_any": 0.229916,
+    "bmi": 0.33151
+   }
+  },
+  "mallampati_ge3|mouth_lt4|neck_limited|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.424849,
+   "coef": {
+    "mallampati_ge3": 0.297903,
+    "mouth_lt4": 0.207944,
+    "neck_limited": 0.0839,
+    "no_prognath": -0.149557,
+    "history_difficult_any": 0.233747,
+    "bmi": 0.327603
+   }
+  },
+  "mallampati_ge3|dtm|neck_limited|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.436307,
+   "coef": {
+    "mallampati_ge3": 0.333675,
+    "dtm": -0.283355,
+    "neck_limited": 0.067051,
+    "no_prognath": -0.147021,
+    "history_difficult_any": 0.245303,
+    "bmi": 0.329958
+   }
+  },
+  "mouth_lt4|dtm|neck_limited|no_prognath|history_difficult_any|bmi": {
+   "intercept": -2.414631,
+   "coef": {
+    "mouth_lt4": 0.244883,
+    "dtm": -0.268572,
+    "neck_limited": 0.091065,
+    "no_prognath": -0.125014,
+    "history_difficult_any": 0.261591,
+    "bmi": 0.367823
+   }
+  }
+ }
 }

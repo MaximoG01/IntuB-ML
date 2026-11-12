@@ -24,11 +24,16 @@
         </p>
         <p class="muted small">Factors that weigh most:</p>
         <ul class="factors">
-          {% for c in result.contributions if not c.fixed %}{% if loop.index <= 3 %}
+          {% for c in result.contributions if not c.fixed and not c.omitted %}{% if loop.index <= 3 %}
             <li>{{ "+" if c.contribution > 0 else "−" }} {{ c.label }}
               {% if c.imputed %}<span class="muted">(missing: median used)</span>{% endif %}</li>
           {% endif %}{% endfor %}
         </ul>
+        {% set omitted = result.contributions|selectattr("omitted")|map(attribute="label")|list %}
+        {% if omitted %}
+          <p class="muted small">Not given: {{ omitted|join(", ") }}. The risk comes from a model fitted without
+            {{ "it" if omitted|length == 1 else "them" }}, not from guessing the value.</p>
+        {% endif %}
       {% else %}
         <p class="muted">No active model.</p>
       {% endif %}

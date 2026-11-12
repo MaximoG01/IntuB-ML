@@ -102,21 +102,34 @@ def predict_features(values: Dict[str, Optional[float]], model: dict) -> Tuple[f
     """
     Probability from a dict of feature values. Features in model["fixed"] (e.g. the device:
     prediction is for direct laryngoscopy) override the input and are flagged as fixed.
-    Contribution = coefficient x standardized value (log-odds); missing values use the
-    training median and are flagged as imputed.
+    Contribution = coefficient x standardized value (log-odds). Missing values: if the model has
+    pattern submodels, the submodel without those signs is used and they are flagged as omitted
+    (training/submodels.py explains why); otherwise the training median is used (flagged as imputed).
     """
     fixed = model.get("fixed", {})
-    z = model["intercept"]
+    intercept, coef = model["intercept"], model["coef"]
+    missing = {f for f in model["features"] if f not in fixed and values.get(f) is None}
+    sub = None
+    if missing and "submodels" in model:
+        sub = model["submodels"].get("|".join(f for f in model["features"] if f not in missing))
+    if sub is not None:
+        intercept, coef = sub["intercept"], sub["coef"]
+    z = intercept
     contributions = []
     for f in model["features"]:
+        label = FEATURE_LABELS.get(f, f)
+        if sub is not None and f in missing:
+            contributions.append({"feature": f, "label": label, "value": None, "contribution": 0.0,
+                                  "imputed": False, "omitted": True, "fixed": False})
+            continue
         v = fixed.get(f, values.get(f))
         imputed = v is None
         if imputed:
             v = model["impute"][f]
-        c = model["coef"][f] * (v - model["mean"][f]) / model["scale"][f]
+        c = coef[f] * (v - model["mean"][f]) / model["scale"][f]
         z += c
-        contributions.append({"feature": f, "label": FEATURE_LABELS.get(f, f), "value": v,
-                              "contribution": c, "imputed": imputed, "fixed": f in fixed})
+        contributions.append({"feature": f, "label": label, "value": v, "contribution": c,
+                              "imputed": imputed, "omitted": False, "fixed": f in fixed})
     contributions.sort(key=lambda d: abs(d["contribution"]), reverse=True)
     return 1.0 / (1.0 + math.exp(-z)), contributions
 

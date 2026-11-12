@@ -78,6 +78,7 @@ con **Download CSV** (colonne `x_<nome>`, cella vuota = mancante) per l'allename
 pip install -r requirements-train.txt
 python -m training.run_thyroid      # studio tiroide Padova (SPEC §11): confronta i modelli, esporta models/thyroid-lr-v1/ e lo rende attivo
 python -m training.run_local_cases    # casi raccolti nel sito (CSV da Users -> data/local/intub-cases.csv): valida il modello e, con >= 10 eventi, lo ricalibra (--export)
+python -m training.missing_sim        # campo vuoto: mediana vs sottomodello senza quel segno (simulazione, ~30 s)
 python -m training.run_laryngoscope  # studio sugli obesi (SPEC §10), esporta models/laryngoscope-lr-v1/
 python -m training.run_vitaldb       # (vecchio) modello solo demografico su VitalDB
 python -m pytest                     # test

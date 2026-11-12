@@ -10,8 +10,9 @@
 <ol>
   <li><strong>Data.</strong> 500 adults before thyroid surgery in Padova; 48 had Cormack 3–4 with a curved blade.
     Every sign was recorded <em>before</em> laryngoscopy.</li>
-  <li><strong>Prepare.</strong> Missing values are filled with the median; each sign is rescaled to mean 0 and standard
-    deviation 1, so that the weights can be compared and penalized fairly.</li>
+  <li><strong>Prepare.</strong> Each sign is rescaled to mean 0 and standard deviation 1, so that the weights can be
+    compared and penalized fairly. No value is missing in these patients (for empty fields in the app see
+    <a href="#missing">below</a>).</li>
   <li><strong>Fit.</strong> A logistic regression finds one weight per sign
     (<a href="{{ url_for('main.blog_post', slug='gradient-descent') }}">how it learns</a>), with a penalty that keeps
     the weights small. The strength of the penalty is chosen automatically (see below).</li>
@@ -140,10 +141,41 @@
 {% else %}
 <p class="muted">Data not available: run <code>python -m training.run_thyroid --teaching-only</code>.</p>
 {% endif %}
+
+<h2 id="missing">What if a sign is not given?</h2>
+<p>The 500 Padova patients have no missing values, but in the <a href="{{ url_for('main.predict') }}">Assess</a>
+  form a field can be left empty. Two options:</p>
+<ul>
+  <li><strong>Fill the gap with the median</strong> of the training patients. For a yes/no sign the median is "no":
+    an unknown Mallampati is treated as a reassuring one.</li>
+  <li><strong>Leave the sign out</strong>: use a model fitted without it (a <em>pattern submodel</em>). With 7 signs
+    there are 127 such models; they are all computed in advance.</li>
+</ul>
+{% set miss = teaching.missing if teaching and teaching.missing else none %}
+{% if miss %}
+<p>We simulated both: the model is trained on complete data, then values are deleted from the patients it is tested
+  on. O/E = observed ÷ expected events: above 1 means the risk is <strong>underestimated</strong>.</p>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Missing</th><th>Method</th><th>AUC</th><th>O/E</th></tr></thead>
+  <tbody>
+  {% for r in miss if r.scenario in ("complete data", "no Mallampati III–IV", "no BMI", "20% of values at random", "40% of values at random") %}
+    <tr {% if r.method == "submodel" %}class="row-active"{% endif %}>
+      <td>{{ r.scenario }}</td><td>{{ "leave out" if r.method == "submodel" else r.method }}</td>
+      <td>{{ "%.2f"|format(r.auc) }}</td><td>{{ "%.2f"|format(r.o_e) }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p>The ranking (AUC) is the same, but the median makes the model too reassuring, which is the dangerous direction
+  for preparing plan B. The app therefore <strong>leaves out</strong> the signs you do not give, and says so under the
+  result.</p>
+{% endif %}
 {% endblock %}
 {% block references %}
 <li>Hoerl AE, Kennard RW. Ridge regression: biased estimation for nonorthogonal problems. Technometrics 1970;12:55-67.</li>
 <li>Steyerberg EW. Clinical Prediction Models, 2nd ed. Springer 2019 (chapters 13–14, shrinkage and penalization).</li>
+<li>Mercaldo SF, Blume JD. Missing data and prediction: the pattern submodel. Biostatistics 2020;21:236-52.</li>
 <li>Riley RD et al. Calculating the sample size required for developing a clinical prediction model. BMJ 2020;368:m441.</li>
 <li>Data: De Cassai A et al. PLoS ONE 2019;14:e0212976 (CC-BY 4.0).</li>
 {% endblock %}

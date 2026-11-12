@@ -21,7 +21,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from app import inference
-from training import thyroid, evaluate, run_vitaldb, teaching
+from training import thyroid, evaluate, missing_sim, run_vitaldb, submodels, teaching
 from training.run_laryngoscope import (N_REPEATS, coef_bootstrap, coefficient_lines, cv_with_ci, fmt_ci,
                                        optimism_table, probast_and_limitations)
 
@@ -138,14 +138,21 @@ def write_teaching(X, y, chosen_C):
     """teaching.json for the Learn pages; also callable alone (python -m training.run_thyroid --teaching-only)."""
     labels = [inference.FEATURE_LABELS[f] for f in thyroid.FEATURES]
     material = teaching.material(X, y, labels, 0, "Mallampati ≥ III", thyroid.SOURCE, chosen_C=chosen_C)
+    material["missing"] = [{"scenario": s, "method": m, **{k: round(v, 3) for k, v in r.items()}}
+                           for (s, m), r in missing_sim.run(X, y, chosen_C).items()]
     (MODELS_DIR / MODEL_NAME / "teaching.json").write_text(json.dumps(material), encoding="utf-8")
 
 
 def teaching_only():
+    """Rebuild teaching.json and the pattern submodels without rerunning the whole study."""
     df = thyroid.load()
-    model = json.loads((MODELS_DIR / MODEL_NAME / "model.json").read_text(encoding="utf-8"))
-    write_teaching(df[thyroid.FEATURES].to_numpy(dtype=float), df["difficult"].to_numpy(dtype=int), model.get("C"))
-    print("Rewrote teaching.json")
+    X, y = df[thyroid.FEATURES].to_numpy(dtype=float), df["difficult"].to_numpy(dtype=int)
+    path = MODELS_DIR / MODEL_NAME / "model.json"
+    model = json.loads(path.read_text(encoding="utf-8"))
+    model["submodels"] = submodels.pattern_submodels(X, y, thyroid.FEATURES, model["C"])
+    path.write_text(json.dumps(model, indent=1), encoding="utf-8")
+    write_teaching(X, y, model.get("C"))
+    print(f"Rewrote teaching.json and {len(model['submodels'])} submodels in model.json")
 
 
 def main():
@@ -201,6 +208,7 @@ def main():
         "limitations": limitations(int(y.sum())),
     }
     model = run_vitaldb.export_lr(final, thyroid.FEATURES, info, name=MODEL_NAME)
+    model["submodels"] = submodels.pattern_submodels(X, y, thyroid.FEATURES, model["C"])  # empty fields in the app
 
     out = MODELS_DIR / MODEL_NAME
     out.mkdir(parents=True, exist_ok=True)
