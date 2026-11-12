@@ -73,3 +73,15 @@ def test_public_mode_closes_signup_and_serves_assets():
     home = c.get("/").get_data(as_text=True)
     assert "Sign up" not in home and "/assets/logo.svg?v=" in home
     assert c.get("/assets/logo.svg").status_code == 200
+
+
+def test_admin_creates_user(app, logged_in):
+    from app import db
+    from app.models import User
+    data = {"name": "Nuova", "email": "Nuova@Example.org", "password": "temporanea1"}
+    assert logged_in.get("/users").status_code == 403          # clinician: no access
+    User.query.filter_by(email="clinico@example.org").first().is_admin = True
+    db.session.commit()
+    assert logged_in.post("/users", data=data).status_code == 302
+    assert User.query.filter_by(email="nuova@example.org").first().check_password("temporanea1")
+    assert "already exists" in logged_in.post("/users", data=data).get_data(as_text=True)

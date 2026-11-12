@@ -8,7 +8,7 @@ from flask_login import login_required, current_user, login_user, logout_user
 
 from app import db
 from app.models import User, IntubationRecord, CustomField, CustomValue
-from app.forms import LoginForm, RegistrationForm, CustomFieldForm, ToggleForm
+from app.forms import LoginForm, RegistrationForm, CustomFieldForm, NewUserForm, ToggleForm
 
 from app.ml import (
     evaluate_logistic,
@@ -393,6 +393,28 @@ def _inject_choices():
 def _require_admin() -> None:
     if not current_user.is_authenticated or not current_user.is_admin:
         abort(403)
+
+
+@bp.route("/users", methods=["GET", "POST"])
+@login_required
+def users():
+    _require_admin()
+    form = NewUserForm()
+    if form.validate_on_submit():
+        email = form.email.data.strip().lower()
+        if User.query.filter(db.func.lower(User.email) == email).first():
+            form.email.errors.append("An account with this email already exists.")
+        else:
+            user = User(email=email, name=form.name.data.strip(), is_admin=form.is_admin.data)
+            user.set_password(form.password.data)
+            db.session.add(user)
+            db.session.commit()
+            flash(f"Account created for {email}. Send them the temporary password privately.", "success")
+            return redirect(url_for("main.users"))
+    accounts = User.query.order_by(User.created_at).all()
+    counts = dict(db.session.query(IntubationRecord.operator_id, db.func.count(IntubationRecord.id))
+                  .group_by(IntubationRecord.operator_id).all())
+    return render_template("users.html", form=form, accounts=accounts, counts=counts)
 
 
 @bp.route("/variables", methods=["GET", "POST"])

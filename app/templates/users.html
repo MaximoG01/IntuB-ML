@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Users — intuB{% endblock %}
+{% block content %}
+
+<h2>Users</h2>
+<p class="muted">Sign-up is closed on the public site: only accounts created here can log in and save cases.
+  Give each person a temporary password privately (not by email together with the address).</p>
+
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Cases saved</th><th>Created</th></tr></thead>
+  <tbody>
+  {% for u in accounts %}
+    <tr>
+      <td>{{ u.name }}</td>
+      <td>{{ u.email }}</td>
+      <td>{{ "administrator" if u.is_admin else "clinician" }}</td>
+      <td>{{ counts.get(u.id, 0) }}</td>
+      <td>{{ u.created_at.strftime("%d/%m/%Y") if u.created_at else "" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<p><a class="btn" href="{{ url_for('main.export_csv') }}">Download all cases (CSV)</a>
+  <span class="muted small">Pseudonymized: no names, no free text. Use it to retrain the model locally.</span></p>
+
+<h3>New account</h3>
+<form method="post" class="form-section" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="form-grid">
+    {% for f in [form.name, form.email, form.password] %}
+      <div>{{ f.label }} {{ f(autocomplete="off") }}
+        {% for e in f.errors %}<div class="warn small">{{ e }}</div>{% endfor %}</div>
+    {% endfor %}
+  </div>
+  <p>{{ form.is_admin() }} {{ form.is_admin.label }}</p>
+  <p>{{ form.submit(class_="btn btn-primary") }}</p>
+</form>
+
+{% endblock %}

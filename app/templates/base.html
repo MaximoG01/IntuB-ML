@@ -29,6 +29,7 @@
       <a class="nav-link {% if ep.startswith('main.blog') %}active{% endif %}" href="{{ url_for('main.blog') }}">Learn</a>
       {% if current_user.is_authenticated and current_user.is_admin %}
         <a class="nav-link {% if ep == 'main.custom_fields' %}active{% endif %}" href="{{ url_for('main.custom_fields') }}">Variables</a>
+        <a class="nav-link {% if ep == 'main.users' %}active{% endif %}" href="{{ url_for('main.users') }}">Users</a>
       {% endif %}
       {% if current_user.is_authenticated %}
         <a class="nav-link" href="{{ url_for('main.logout') }}">Log out</a>

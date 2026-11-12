@@ -64,6 +64,15 @@ class CustomFieldForm(FlaskForm):
         return True
 
 
+class NewUserForm(FlaskForm):
+    """Admin: create an account that can save cases (sign-up is closed on the public site)."""
+    name = StringField("Name", validators=[DataRequired(), Length(max=128)])
+    email = StringField("Email", validators=[DataRequired(), Email(), Length(max=255)])
+    password = PasswordField("Temporary password (at least 8 characters)", validators=[DataRequired(), Length(min=8)])
+    is_admin = BooleanField("Administrator")
+    submit = SubmitField("Create account")
+
+
 class ToggleForm(FlaskForm):
     """Empty form: only carries the CSRF token for admin buttons."""
 
