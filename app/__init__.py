@@ -1,4 +1,5 @@
 import math
+from pathlib import Path
 
 import click
 
@@ -17,8 +18,17 @@ login_manager.login_message = "Please log in to continue."
 csrf = CSRFProtect()  # every POST needs a token, also plain HTML forms (AGENTS.md rule 3)
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    # /assets, not /static: a web host's own /static/ mapping (e.g. PythonAnywhere) could serve an old folder
+    app = Flask(__name__, static_url_path="/assets")
     app.config.from_object(config_class)
+
+    @app.url_defaults
+    def _static_version(endpoint, values):
+        # ?v=<mtime>: browsers fetch a file again as soon as it changes
+        if endpoint == "static" and "filename" in values:
+            f = Path(app.static_folder) / values["filename"]
+            if f.is_file():
+                values["v"] = int(f.stat().st_mtime)
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -43,5 +53,19 @@ def create_app(config_class=Config):
         user.is_admin = True
         db.session.commit()
         click.echo(f"{email} is now an administrator.")
+
+    @app.cli.command("create-user")
+    @click.argument("email")
+    @click.argument("name")
+    @click.password_option()
+    def create_user(email, name, password):
+        """Create an account that can save cases: flask create-user name@example.org Name."""
+        if models.User.query.filter_by(email=email).first():
+            raise click.ClickException(f"{email} already exists.")
+        user = models.User(email=email, name=name)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        click.echo(f"Created {email}.")
 
     return app

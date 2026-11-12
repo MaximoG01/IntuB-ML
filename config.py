@@ -20,3 +20,6 @@ class Config:
     # If set, registration requires this code (shared app). Unset = open registration (local development).
     INVITE_CODE = os.environ.get("INVITE_CODE") or None
     WTF_CSRF_ENABLED = True
+    # Public deployment: anyone can assess and learn, nothing they type is stored. Accounts that can save
+    # cases are created by the administrator (flask create-user). ALLOW_REGISTRATION=1 reopens sign-up.
+    ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION") == "1"

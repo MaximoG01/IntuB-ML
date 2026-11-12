@@ -10,6 +10,7 @@ class TestConfig:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_ENABLED = False
     TESTING = True
+    ALLOW_REGISTRATION = True
 
 
 @pytest.fixture

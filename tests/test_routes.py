@@ -60,3 +60,16 @@ def test_new_case_with_outcome(app, logged_in):
     logged_in.post("/case/new", data={**ASSESSMENT, "cormack": "1", "success": "1"})
     rec = IntubationRecord.query.one()
     assert rec.difficult_binary is False and rec.success is True
+
+
+def test_public_mode_closes_signup_and_serves_assets():
+    from app import create_app
+    from tests.conftest import TestConfig
+
+    class PublicConfig(TestConfig):
+        ALLOW_REGISTRATION = False
+    c = create_app(PublicConfig).test_client()
+    assert c.get("/register").status_code == 302
+    home = c.get("/").get_data(as_text=True)
+    assert "Sign up" not in home and "/assets/logo.svg?v=" in home
+    assert c.get("/assets/logo.svg").status_code == 200

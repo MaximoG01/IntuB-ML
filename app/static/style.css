@@ -393,3 +393,13 @@ details { margin: 10px 0; }
 .reg-readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 10px 0; }
 .reg-readout div { background: #f3f7fd; border-radius: 8px; padding: 8px 12px; }
 .reg-readout strong { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.landing-lead { font-size: 1.1rem; }
+.feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 1.2rem 0; }
+.feature-card { display: block; border: 1px solid #d9e2ec; border-radius: 12px; padding: 14px; color: #102a43;
+  background: #fff; box-shadow: 0 4px 16px rgba(15, 60, 145, 0.08); }
+.feature-card:hover { background: #f0f4ff; text-decoration: none; }
+.feature-card img { width: 100%; height: 120px; object-fit: contain; background: #fcfcfb; border-radius: 8px; }
+.feature-card h3 { margin: 10px 0 4px; color: #0f3c91; }
+.center { text-align: center; }
+.flash-info, .flash-success { background: #eef4ff; border: 1px solid #c9d8f5; }
+.flash-warning, .flash-danger { background: #fff6ef; border: 1px solid #f3d0b4; }

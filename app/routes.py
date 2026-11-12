@@ -120,6 +120,10 @@ def logout():
 # ------------------------------------------------------
 @bp.route("/register", methods=["GET", "POST"])
 def register():
+    if not current_app.config.get("ALLOW_REGISTRATION"):
+        flash("Sign-up is closed: the app is public for assessment and learning. "
+              "Accounts for collecting cases are created by the administrator.", "info")
+        return redirect(url_for("main.landing"))
     form = RegistrationForm()
     invite = current_app.config.get("INVITE_CODE")
     if form.validate_on_submit():

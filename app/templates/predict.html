@@ -70,7 +70,7 @@
     {% if current_user.is_authenticated %}
       <button class="btn" type="submit" name="action" value="save">Calculate and save as pending case</button>
     {% else %}
-      <span class="muted">Log in to save the case.</span>
+      <span class="muted small">Nothing you type is stored: the risk is computed and shown, then discarded.</span>
     {% endif %}
   </p>
 </form>
