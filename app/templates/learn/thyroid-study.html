@@ -1,6 +1,6 @@
 {% extends "learn/_post.html" %}
 {% block post %}
-{% set model = studies.get("decassai-lr-v1") %}
+{% set model = studies.get("thyroid-lr-v1") %}
 {% if model %}
 {% set td = model.training_data %}{% set v = model.validation %}
 {% set r = v.results[model.primary] %}{% set m0 = v.egri_rule %}
@@ -63,7 +63,7 @@
   El-Ganzouri while flagging the same share of patients. Overall risk of bias:
   <strong>{{ model.probast.overall.risk }}</strong>. All the numbers: <code>models/{{ model.name }}/model_card.md</code>.</p>
 {% else %}
-<p class="muted">Results not available: run <code>python -m training.run_decassai</code>.</p>
+<p class="muted">Results not available: run <code>python -m training.run_thyroid</code>.</p>
 {% endif %}
 {% endblock %}
 {% block references %}

@@ -321,7 +321,7 @@ Mallampati, collo e storia esistono solo come sì/no (il dataset non ha le class
 si ricavano tutte dal form "Valuta" (Mallampati ≥ 3, apertura bocca < 4 cm, DTM, collo ≤ 90°,
 prognatismo, storia di intubazione difficile dubbia o certa, BMI).
 
-### 11.1 Risultati (02/11/2026) — `models/decassai-lr-v1/`, **modello attivo dell'app**
+### 11.1 Risultati (02/11/2026) — `models/thyroid-lr-v1/`, **modello attivo dell'app**
 
 | Modello | AUC (dentro i fold, 5 × 20) | Sensibilità @15% | Segnalati @15% |
 |---|---|---|---|

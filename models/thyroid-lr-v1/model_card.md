@@ -1,4 +1,4 @@
-# Model card — decassai-lr-v1
+# Model card — thyroid-lr-v1
 
 Created: 2026-11-02 · penalized logistic regression (L2, C=0.0464) · protocol: SPEC §11
 

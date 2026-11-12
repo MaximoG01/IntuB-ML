@@ -1,9 +1,9 @@
 """
 Pre-specified study on the Padova thyroid-surgery cohort (SPEC §11) and export of the primary model.
 
-    venv\\Scripts\\python.exe -m training.run_decassai
+    venv\\Scripts\\python.exe -m training.run_thyroid
 
-Writes models/decassai-lr-v1/ (model.json, model_card.md, teaching.json) and models/ACTIVE.
+Writes models/thyroid-lr-v1/ (model.json, model_card.md, teaching.json) and models/ACTIVE.
 """
 from __future__ import annotations
 
@@ -20,11 +20,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from app import inference
-from training import decassai, evaluate, run_vitaldb, teaching
+from training import thyroid, evaluate, run_vitaldb, teaching
 from training.run_laryngoscope import (N_REPEATS, coef_bootstrap, coefficient_lines, cv_with_ci, fmt_ci,
                                        optimism_table, probast_and_limitations)
 
-MODEL_NAME = "decassai-lr-v1"
+MODEL_NAME = "thyroid-lr-v1"
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
 LABELS = {
     "null": "No model (prevalence)",
@@ -134,9 +134,9 @@ def model_card(model: dict) -> str:
 
 
 def main():
-    df = decassai.load()
+    df = thyroid.load()
     y = df["difficult"].to_numpy(dtype=int)
-    X = df[decassai.FEATURES].to_numpy(dtype=float)
+    X = df[thyroid.FEATURES].to_numpy(dtype=float)
     print(f"Padova: {len(y)} patients, {y.sum()} Cormack 3-4 ({y.mean() * 100:.1f}%)")
 
     shared = run_vitaldb.make_models()
@@ -162,37 +162,37 @@ def main():
     for title, o in (("penalized", optimism), ("unpenalized", optimism_unpen)):
         print(f"Optimism {title}:", {k: (round(v["apparent"], 3), round(v["corrected"], 3)) for k, v in o.items() if k != "n_boot"})
 
-    Xt = df[decassai.FEATURES + ["neck_circumference"]].to_numpy(dtype=float)
-    thyroid = {"auc_fold": evaluate.fold_auc(shared["lr"], Xt, y, n_repeats=N_REPEATS),
+    Xt = df[thyroid.FEATURES + ["neck_circumference"]].to_numpy(dtype=float)
+    neck_model = {"auc_fold": evaluate.fold_auc(shared["lr"], Xt, y, n_repeats=N_REPEATS),
                "optimism": evaluate.optimism_corrected(shared["lr"], Xt, y)}
-    print("+ neck circumference:", round(thyroid["auc_fold"]["mean"], 3), round(thyroid["optimism"]["auc"]["corrected"], 3))
+    print("+ neck circumference:", round(neck_model["auc_fold"]["mean"], 3), round(neck_model["optimism"]["auc"]["corrected"], 3))
     external = external_vitaldb(df)
     print("VitalDB model:", {k: v for k, v in external.items() if k != "model"})
-    sample_size = evaluate.riley_sample_size(float(y.mean()), len(decassai.FEATURES))
+    sample_size = evaluate.riley_sample_size(float(y.mean()), len(thyroid.FEATURES))
     print("Riley:", sample_size["n_required"], sample_size["events_required"])
 
     final = clone(shared["lr"]).fit(X, y)
     info = {
-        "training_data": {"source": decassai.SOURCE, "sha256": decassai.sha256(), "n": int(len(y)),
+        "training_data": {"source": thyroid.SOURCE, "sha256": thyroid.sha256(), "n": int(len(y)),
                           "events": int(y.sum()), "prevalence": float(y.mean()),
                           "population": POPULATION},
         "primary": PRIMARY,
         "validation": {"method": METHOD,
                        "results": results, "dca_reference": evaluate.dca_reference(y), "egri_rule": m0,
                        "optimism": optimism, "optimism_unpenalized": optimism_unpen,
-                       "thyroid_model": thyroid, "external_vitaldb": external, "sample_size": sample_size},
-        "coef_ci": coef_bootstrap(shared["lr"], X, y, decassai.FEATURES),
+                       "thyroid_model": neck_model, "external_vitaldb": external, "sample_size": sample_size},
+        "coef_ci": coef_bootstrap(shared["lr"], X, y, thyroid.FEATURES),
         "probast": {"tool": "PROBAST (Wolff et al., Ann Intern Med 2019)", "domains": PROBAST, "overall": PROBAST_OVERALL},
         "limitations": limitations(int(y.sum())),
     }
-    model = run_vitaldb.export_lr(final, decassai.FEATURES, info, name=MODEL_NAME)
+    model = run_vitaldb.export_lr(final, thyroid.FEATURES, info, name=MODEL_NAME)
 
     out = MODELS_DIR / MODEL_NAME
     out.mkdir(parents=True, exist_ok=True)
     (out / "model.json").write_text(json.dumps(model, indent=1), encoding="utf-8")
     (out / "model_card.md").write_text(model_card(model), encoding="utf-8")
-    labels = [inference.FEATURE_LABELS[f] for f in decassai.FEATURES]
-    (out / "teaching.json").write_text(json.dumps(teaching.material(X, y, labels, 0, "Mallampati ≥ III", decassai.SOURCE)),
+    labels = [inference.FEATURE_LABELS[f] for f in thyroid.FEATURES]
+    (out / "teaching.json").write_text(json.dumps(teaching.material(X, y, labels, 0, "Mallampati ≥ III", thyroid.SOURCE)),
                                        encoding="utf-8")
     # SPEC §11: the primary model becomes the app model if it discriminates (it does: AUC ~0.74)
     (MODELS_DIR / "ACTIVE").write_text(MODEL_NAME + "\n", encoding="utf-8")

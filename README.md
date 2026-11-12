@@ -18,7 +18,7 @@ Il progetto ha due obiettivi:
 |---|---|
 | App Flask (login, inserimento casi, predizione, pagina Modello, sezione Impara) | funziona in locale |
 | Dati | **Chirurgia tiroidea, Padova** (De Cassai et al., PLoS ONE 2019: 500 pazienti, 48 Cormack 3–4, item di El-Ganzouri) per il modello attivo ([SPEC.md](SPEC.md) §11). Studio sugli obesi (99 pazienti, §10) e VitalDB (solo dati demografici, §9) come confronto. Dati sintetici abbandonati (§3.1) |
-| Modello attivo | `decassai-lr-v1`: logistica penalizzata su 7 item (Mallampati, apertura bocca, DTM, collo, prognatismo, storia, BMI). **AUC ≈ 0,74** contro 0,60 della regola El-Ganzouri ≥ 4; rischio di bias alto (PROBAST), solo chirurgia tiroidea |
+| Modello attivo | `thyroid-lr-v1`: logistica penalizzata su 7 item (Mallampati, apertura bocca, DTM, collo, prognatismo, storia, BMI). **AUC ≈ 0,74** contro 0,60 della regola El-Ganzouri ≥ 4; rischio di bias alto (PROBAST), solo chirurgia tiroidea |
 | Confronto | stessi fold per tutti: El-Ganzouri 0,60, Mallampati 0,64, logistica 0,74, gradient boosting 0,68, rete neurale 0,69. Sugli obesi nessun modello supera 0,56 |
 | El-Ganzouri | calcolato dall'app dai 7 item, mostrato accanto al modello |
 | Deployment | Heroku dismesso; alternative in [ARCHITECTURE.md](ARCHITECTURE.md) |
@@ -76,7 +76,7 @@ con **Download CSV** (colonne `x_<nome>`, cella vuota = mancante) per l'allename
 
 ```powershell
 pip install -r requirements-train.txt
-python -m training.run_decassai      # studio tiroide Padova (SPEC §11): confronta i modelli, esporta models/decassai-lr-v1/ e lo rende attivo
+python -m training.run_thyroid      # studio tiroide Padova (SPEC §11): confronta i modelli, esporta models/thyroid-lr-v1/ e lo rende attivo
 python -m training.run_laryngoscope  # studio sugli obesi (SPEC §10), esporta models/laryngoscope-lr-v1/
 python -m training.run_vitaldb       # (vecchio) modello solo demografico su VitalDB
 python -m pytest                     # test

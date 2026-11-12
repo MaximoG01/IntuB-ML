@@ -44,7 +44,7 @@ def load_model(name: str) -> dict:
     return json.loads((MODELS_DIR / name / "model.json").read_text(encoding="utf-8"))
 
 
-STUDY_MODELS = ("decassai-lr-v1", "laryngoscope-lr-v1")
+STUDY_MODELS = ("thyroid-lr-v1", "laryngoscope-lr-v1")
 
 
 @lru_cache(maxsize=1)

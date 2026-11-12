@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from sklearn.dummy import DummyClassifier
 
-from training import decassai, evaluate, laryngoscope
+from training import thyroid, evaluate, laryngoscope
 
 
 def test_fold_auc_of_null_model_is_one_half():
@@ -19,12 +19,12 @@ def test_riley_needs_more_patients_with_more_predictors():
     assert few["n_intercept"] == np.ceil(1.96 ** 2 / 0.05 ** 2 * 0.18 * 0.82)
 
 
-@pytest.mark.skipif(not decassai.DEFAULT_PATH.exists(), reason="dataset not downloaded")
-def test_decassai_coding():
-    df = decassai.load()
+@pytest.mark.skipif(not thyroid.DEFAULT_PATH.exists(), reason="dataset not downloaded")
+def test_thyroid_coding():
+    df = thyroid.load()
     assert len(df) == 500 and df["difficult"].sum() == 48
     assert 0.2 < df["sex_male"].mean() < 0.25  # thyroid surgery: mostly women
-    assert df[decassai.FEATURES].notna().all().all()
+    assert df[thyroid.FEATURES].notna().all().all()
 
 
 @pytest.mark.skipif(not laryngoscope.DEFAULT_PATH.exists(), reason="dataset not downloaded")
